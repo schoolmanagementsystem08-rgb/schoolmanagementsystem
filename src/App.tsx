@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from './components/DashboardLayout.tsx';
 import { AuthProvider, useAuth } from './lib/useAuth.tsx';
-import api from './lib/api.ts';
-
 import LoginPage from './pages/LoginPage.tsx';
 import SignupPage from './pages/SignupPage.tsx';
 import StudentsPage from './pages/Students.tsx';
@@ -13,6 +11,7 @@ import FeesPage from './pages/Fees.tsx';
 import MessagesPage from './pages/Messages.tsx';
 import AnnouncementsPage from './pages/Announcements.tsx';
 import ClassesPage from './pages/Classes.tsx';
+import AdminDashboard from './pages/AdminDashboard.tsx';
 
 import TeacherDashboard from './pages/TeacherDashboard.tsx';
 import TeacherClasses from './pages/TeacherClasses.tsx';
@@ -68,56 +67,6 @@ const SettingsPage = () => {
   );
 };
 
-const Dashboard = () => {
-  const [stats, setStats] = useState({ students: 0, fees: 0, announcements: 0, attendanceRate: 0 });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      api.get('/students').catch(() => ({ data: [] })),
-      api.get('/fees').catch(() => ({ data: [] })),
-      api.get('/announcements').catch(() => ({ data: [] })),
-    ]).then(([studentsRes, feesRes, announcementsRes]) => {
-      const students = Array.isArray(studentsRes.data) ? studentsRes.data : [];
-      const fees = Array.isArray(feesRes.data) ? feesRes.data : [];
-      const announcements = Array.isArray(announcementsRes.data) ? announcementsRes.data : [];
-      setStats({
-        students: students.length,
-        fees: fees.filter((f: any) => f.status !== 'Paid').reduce((a: number, f: any) => a + Number(f.amount), 0),
-        announcements: announcements.length,
-        attendanceRate: 0,
-      });
-    }).finally(() => setLoading(false));
-  }, []);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
-        <div className="text-sm text-neutral-500">Term: Spring 2026</div>
-      </div>
-      {loading ? (
-        <p className="text-center text-neutral-400 py-12">Loading dashboard...</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { label: 'Total Students', value: String(stats.students), change: 'Enrolled', color: 'bg-blue-50 text-blue-700' },
-            { label: 'Announcements', value: String(stats.announcements), change: 'Posted', color: 'bg-green-50 text-green-700' },
-            { label: 'Active Fee Records', value: String(stats.fees > 0 ? stats.fees : 0), change: 'Outstanding', color: 'bg-orange-50 text-orange-700' },
-            { label: 'Unpaid Fees', value: `$${stats.fees.toLocaleString()}`, change: 'Due', color: 'bg-purple-50 text-purple-700' },
-          ].map((stat, i) => (
-            <div key={i} className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
-              <p className="text-sm font-medium text-neutral-500">{stat.label}</p>
-              <p className="text-2xl font-bold mt-1">{stat.value}</p>
-              <div className={`mt-2 px-2 py-0.5 rounded-full text-xs font-semibold inline-block ${stat.color}`}>{stat.change}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 function AppRoutes() {
   const { user, role, loading } = useAuth();
 
@@ -147,7 +96,7 @@ function AppRoutes() {
   return (
     <DashboardLayout userRole={role}>
       <Routes>
-        <Route path="/" element={isTeacher ? <TeacherDashboard /> : <Dashboard />} />
+        <Route path="/" element={isTeacher ? <TeacherDashboard /> : <AdminDashboard />} />
         <Route path="/announcements" element={<AnnouncementsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />

@@ -11,6 +11,7 @@ import messagesRouter from './messages';
 import subjectsRouter from './subjects';
 import teachersRouter from './teachers';
 import authRouter from './auth';
+import statsRouter from './stats';
 
 export {
   healthRouter,
@@ -26,4 +27,5 @@ export {
   subjectsRouter,
   teachersRouter,
   authRouter,
+  statsRouter,
 };
