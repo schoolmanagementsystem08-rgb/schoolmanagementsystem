@@ -10,6 +10,7 @@ import announcementsRouter from './announcements';
 import messagesRouter from './messages';
 import subjectsRouter from './subjects';
 import teachersRouter from './teachers';
+import authRouter from './auth';
 
 export {
   healthRouter,
@@ -24,4 +25,5 @@ export {
   messagesRouter,
   subjectsRouter,
   teachersRouter,
+  authRouter,
 };

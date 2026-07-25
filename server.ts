@@ -4,15 +4,12 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
-import { foglamp } from "foglamp";
 import { env } from './src/config/env';
 
 // Set the AI SDK env from our config
 if (env.GEMINI_API_KEY) {
   process.env.GOOGLE_GENERATIVE_AI_API_KEY = env.GEMINI_API_KEY;
 }
-
-const fog = foglamp({ hud: process.env.NODE_ENV !== "production" });
 import {
   healthRouter,
   studentsRouter,
@@ -26,6 +23,7 @@ import {
   messagesRouter,
   subjectsRouter,
   teachersRouter,
+  authRouter,
 } from './src/api';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler';
 import { initializeDatabase } from './src/db';
@@ -53,6 +51,7 @@ async function startServer() {
   app.use('/api/messages', messagesRouter);
   app.use('/api/subjects', subjectsRouter);
   app.use('/api/teachers', teachersRouter);
+  app.use('/api/auth', authRouter);
 
   // AI endpoint
   app.post('/api/ai', async (req, res) => {
@@ -61,9 +60,6 @@ async function startServer() {
       const result = await generateText({
         model: google("gemini-2.0-flash"),
         prompt: prompt || "Say hello",
-        telemetry: {
-          integrations: [fog.integration({ traceName: "chat" })],
-        },
       });
       res.json({ text: result.text });
     } catch (err: any) {

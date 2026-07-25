@@ -19,6 +19,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useAuth } from '../lib/useAuth.tsx';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -51,6 +52,7 @@ const sidebarItems: SidebarItem[] = [
 export function DashboardLayout({ children, userRole }: { children: React.ReactNode, userRole: string }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
+  const { signOut } = useAuth();
 
   const filteredItems = sidebarItems.filter(item => item.roles.includes(userRole));
 
@@ -90,7 +92,7 @@ export function DashboardLayout({ children, userRole }: { children: React.ReactN
 
         <div className="p-4 border-t border-neutral-100">
           <button
-            onClick={() => { localStorage.clear(); window.location.href = '/'; }}
+            onClick={signOut}
             className={cn(
             "flex items-center gap-3 px-3 py-2 w-full text-neutral-600 hover:text-red-600 transition-colors rounded-lg",
             !isSidebarOpen && "justify-center"
