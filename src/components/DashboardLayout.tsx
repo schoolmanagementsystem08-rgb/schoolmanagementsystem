@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronRight,
   ClipboardList,
+  Shield,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,6 +45,9 @@ const sidebarItems: SidebarItem[] = [
   { icon: Calendar, label: 'Attendance', href: '/teacher/attendance', roles: ['teacher'] },
   { icon: GraduationCap, label: 'Grades', href: '/teacher/grades', roles: ['teacher'] },
   { icon: FileText, label: 'Reports', href: '/teacher/reports', roles: ['teacher'] },
+  // Role management
+  { icon: Shield, label: 'Roles', href: '/roles', roles: ['admin'] },
+  { icon: Users, label: 'Users', href: '/users', roles: ['admin'] },
   // Shared
   { icon: Bell, label: 'Announcements', href: '/announcements', roles: ['admin', 'teacher', 'student', 'parent'] },
   { icon: MessageSquare, label: 'Messages', href: '/messages', roles: ['admin', 'teacher', 'student', 'parent'] },

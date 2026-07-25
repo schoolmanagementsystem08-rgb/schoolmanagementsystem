@@ -122,3 +122,12 @@ export const messages = pgTable('messages', {
   read: boolean('read').default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const roles = pgTable('roles', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  permissions: jsonb('permissions').default({}).notNull(),
+  isSystem: boolean('is_system').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});

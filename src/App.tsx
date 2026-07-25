@@ -13,6 +13,8 @@ import AnnouncementsPage from './pages/Announcements.tsx';
 import ClassesPage from './pages/Classes.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import TeachersPage from './pages/Teachers.tsx';
+import RolesPage from './pages/Roles.tsx';
+import UsersPage from './pages/Users.tsx';
 
 import TeacherDashboard from './pages/TeacherDashboard.tsx';
 import TeacherClasses from './pages/TeacherClasses.tsx';
@@ -110,6 +112,8 @@ function AppRoutes() {
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/grades" element={<GradesPage />} />
             <Route path="/fees" element={<FeesPage />} />
+            <Route path="/roles" element={<RolesPage />} />
+            <Route path="/users" element={<UsersPage />} />
           </>
         )}
 
