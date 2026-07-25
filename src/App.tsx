@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from './components/DashboardLayout.tsx';
+import { FoglampHUD } from "foglamp/hud";
 import api from './lib/api.ts';
 
 import StudentsPage from './pages/Students.tsx';
@@ -165,6 +166,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </DashboardLayout>
+      <FoglampHUD />
     </Router>
   );
 }

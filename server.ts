@@ -2,7 +2,17 @@ import express from "express";
 import path from "path";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
+import { generateText } from "ai";
+import { google } from "@ai-sdk/google";
+import { foglamp } from "foglamp";
 import { env } from './src/config/env';
+
+// Set the AI SDK env from our config
+if (env.GEMINI_API_KEY) {
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY = env.GEMINI_API_KEY;
+}
+
+const fog = foglamp({ hud: process.env.NODE_ENV !== "production" });
 import {
   healthRouter,
   studentsRouter,
@@ -29,7 +39,37 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // Vite middleware for development
+  // API Routes (must come before Vite SPA fallback)
+  app.use('/api/health', healthRouter);
+  app.use('/api/students', studentsRouter);
+  app.use('/api/reports', reportsRouter);
+  app.use('/api/classes', classesRouter);
+  app.use('/api/attendance', attendanceRouter);
+  app.use('/api/grades', gradesRouter);
+  app.use('/api/fees', feesRouter);
+  app.use('/api/assignments', assignmentsRouter);
+  app.use('/api/announcements', announcementsRouter);
+  app.use('/api/messages', messagesRouter);
+  app.use('/api/subjects', subjectsRouter);
+
+  // AI endpoint
+  app.post('/api/ai', async (req, res) => {
+    try {
+      const { prompt } = req.body;
+      const result = await generateText({
+        model: google("gemini-2.0-flash"),
+        prompt: prompt || "Say hello",
+        telemetry: {
+          integrations: [fog.integration({ traceName: "chat" })],
+        },
+      });
+      res.json({ text: result.text });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Vite middleware for development (SPA fallback — after API routes)
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -43,19 +83,6 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-
-  // API Routes
-  app.use('/api/health', healthRouter);
-  app.use('/api/students', studentsRouter);
-  app.use('/api/reports', reportsRouter);
-  app.use('/api/classes', classesRouter);
-  app.use('/api/attendance', attendanceRouter);
-  app.use('/api/grades', gradesRouter);
-  app.use('/api/fees', feesRouter);
-  app.use('/api/assignments', assignmentsRouter);
-  app.use('/api/announcements', announcementsRouter);
-  app.use('/api/messages', messagesRouter);
-  app.use('/api/subjects', subjectsRouter);
 
   // Error handling
   app.use(notFoundHandler);

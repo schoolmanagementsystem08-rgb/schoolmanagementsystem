@@ -15,11 +15,13 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.22",
     "@google/genai": "^1.29.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.110.8",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "ai": "^7.0.35",
     "axios": "^1.16.1",
     "clsx": "^2.1.1",
     "cors": "^2.8.6",
@@ -27,6 +29,7 @@
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "express": "^4.22.2",
+    "foglamp": "^0.7.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.38.0",
