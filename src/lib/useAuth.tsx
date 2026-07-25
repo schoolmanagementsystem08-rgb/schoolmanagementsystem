@@ -31,15 +31,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!session) return;
     setToken(session.access_token);
     try {
+      const url = `${api.defaults.baseURL}/auth/me`;
+      console.log('[Auth] Fetching profile from', url);
       const res = await api.get('/auth/me', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
+      console.log('[Auth] Profile response:', res.status, res.data);
       setProfile(res.data.user);
       setRole(res.data.user.role);
       setTeacher(res.data.teacher || null);
       localStorage.setItem('role', res.data.user.role);
       localStorage.setItem('userName', res.data.user.name);
-    } catch {
+    } catch (err: any) {
+      console.error('[Auth] Failed to fetch profile:', err?.response?.status, err?.response?.data || err.message);
+      console.error('[Auth] Request URL:', `${api.defaults.baseURL}/auth/me`);
       setProfile(null);
       setRole('');
       setTeacher(null);
@@ -51,15 +56,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setToken(session?.access_token ?? null);
       if (session?.user) {
+        const url = `${api.defaults.baseURL}/auth/me`;
+        console.log('[Auth] Init profile fetch from', url);
         api.get('/auth/me', {
           headers: { Authorization: `Bearer ${session.access_token}` },
         }).then(res => {
+          console.log('[Auth] Init profile response:', res.status);
           setProfile(res.data.user);
           setRole(res.data.user.role);
           setTeacher(res.data.teacher || null);
           localStorage.setItem('role', res.data.user.role);
           localStorage.setItem('userName', res.data.user.name);
-        }).catch(() => {
+        }).catch((err: any) => {
+          console.error('[Auth] Init profile failed:', err?.response?.status, err?.response?.data || err.message);
+          console.error('[Auth] Init request URL:', url);
           setProfile(null);
           setRole('');
           setTeacher(null);
@@ -84,27 +94,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    console.log('[Auth] Signing in with', email);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+    if (error) {
+      console.error('[Auth] Sign in failed:', error.message);
+      return { error: error.message };
+    }
+    console.log('[Auth] Sign in successful, fetching profile');
     await refreshProfile();
     return {};
   };
 
   const signUp = async (email: string, password: string, name: string, role: string) => {
+    console.log('[Auth] Signing up', email, 'as', role);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name, role } },
     });
-    if (error) return { error: error.message };
+    if (error) {
+      console.error('[Auth] Sign up failed:', error.message);
+      return { error: error.message };
+    }
 
     if (data.user) {
+      console.log('[Auth] Sign up successful, user id:', data.user.id);
       const session = (await supabase.auth.getSession()).data.session;
       if (session) {
-        await api.post('/auth/profile', { name }, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
+        const profileUrl = `${api.defaults.baseURL}/auth/profile`;
+        console.log('[Auth] Creating profile at', profileUrl);
+        try {
+          await api.post('/auth/profile', { name }, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          console.log('[Auth] Profile created');
+        } catch (err: any) {
+          console.error('[Auth] Profile creation failed:', err?.response?.status, err?.response?.data || err.message);
+        }
         await refreshProfile();
+      } else {
+        console.log('[Auth] No session after signup (email confirmation may be required)');
       }
     }
 

@@ -10,25 +10,46 @@ const supabase = createClient(env.SUPABASE_URL || '', env.SUPABASE_ANON_KEY || '
 const router = Router();
 
 async function getTeacherIdFromAuth(authHeader: string | undefined) {
-  if (!authHeader?.startsWith('Bearer ')) return null;
+  if (!authHeader?.startsWith('Bearer ')) {
+    console.log('[Teachers] No Bearer token');
+    return null;
+  }
   const token = authHeader.split(' ')[1];
   const { data: { user: authUser }, error } = await supabase.auth.getUser(token);
-  if (error || !authUser) return null;
+  if (error || !authUser) {
+    console.error('[Teachers] Token verification failed:', error?.message);
+    return null;
+  }
   const [user] = await db.select().from(users).where(eq(users.clerkId, authUser.id)).limit(1);
-  if (!user) return null;
+  if (!user) {
+    console.log('[Teachers] No user found for clerkId:', authUser.id);
+    return null;
+  }
   const [teacher] = await db.select().from(teachers).where(eq(teachers.userId, user.id)).limit(1);
-  return teacher?.id || null;
+  if (!teacher) {
+    console.log('[Teachers] No teacher record for userId:', user.id);
+    return null;
+  }
+  console.log('[Teachers] Found teacherId:', teacher.id, 'for userId:', user.id);
+  return teacher.id;
 }
 
 router.get('/me', async (req, res) => {
   try {
+    console.log('[Teachers /me] Request received');
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
     const token = authHeader.split(' ')[1];
     const { data: { user: authUser }, error } = await supabase.auth.getUser(token);
-    if (error || !authUser) return res.status(401).json({ error: 'Invalid token' });
+    if (error || !authUser) {
+      console.error('[Teachers /me] Token invalid:', error?.message);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
     const [user] = await db.select().from(users).where(eq(users.clerkId, authUser.id)).limit(1);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      console.log('[Teachers /me] No user for clerkId:', authUser.id);
+      return res.status(404).json({ error: 'User not found' });
+    }
     const [teacher] = await db
       .select({
         id: teachers.id,
@@ -43,9 +64,13 @@ router.get('/me', async (req, res) => {
       .leftJoin(users, eq(teachers.userId, users.id))
       .where(eq(teachers.userId, user.id))
       .limit(1);
-    if (!teacher) return res.status(404).json({ error: 'Teacher record not found. Contact admin.' });
+    if (!teacher) {
+      console.log('[Teachers /me] No teacher record for userId:', user.id);
+      return res.status(404).json({ error: 'Teacher record not found. Contact admin.' });
+    }
     res.json(teacher);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /me] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch teacher' });
   }
 });
@@ -56,7 +81,8 @@ router.get('/me/classes', async (req, res) => {
     if (!teacherId) return res.status(401).json({ error: 'Unauthorized' });
     const teacherClasses = await db.select().from(classes).where(eq(classes.teacherId, teacherId));
     res.json(teacherClasses);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /me/classes] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch classes' });
   }
 });
@@ -70,7 +96,8 @@ router.get('/me/subjects', async (req, res) => {
       .from(subjects).leftJoin(classes, eq(subjects.classId, classes.id))
       .where(eq(subjects.teacherId, teacherId));
     res.json(teacherSubjects);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /me/subjects] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch subjects' });
   }
 });
@@ -87,7 +114,8 @@ router.get('/me/students', async (req, res) => {
       .from(students).leftJoin(users, eq(students.userId, users.id)).leftJoin(classes, eq(students.classId, classes.id))
       .where(inArray(students.classId, classIds));
     res.json(classStudents);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /me/students] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch students' });
   }
 });
@@ -104,7 +132,8 @@ router.get('/me/grades', async (req, res) => {
       .from(grades).leftJoin(students, eq(grades.studentId, students.id)).leftJoin(users, eq(students.userId, users.id)).leftJoin(subjects, eq(grades.subjectId, subjects.id))
       .where(inArray(grades.subjectId, subjectIds));
     res.json(gradeRecords);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /me/grades] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch grades' });
   }
 });
@@ -126,7 +155,8 @@ router.get('/me/attendance', async (req, res) => {
       .from(attendance).leftJoin(students, eq(attendance.studentId, students.id)).leftJoin(users, eq(students.userId, users.id)).leftJoin(classes, eq(students.classId, classes.id))
       .where(and(...conditions));
     res.json(records);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /me/attendance] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch attendance' });
   }
 });
@@ -139,7 +169,8 @@ router.get('/:id', async (req, res) => {
       .where(eq(teachers.id, Number(req.params.id))).limit(1);
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     res.json(teacher);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /:id] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch teacher' });
   }
 });
@@ -148,7 +179,8 @@ router.get('/:id/classes', async (req, res) => {
   try {
     const teacherClasses = await db.select().from(classes).where(eq(classes.teacherId, Number(req.params.id)));
     res.json(teacherClasses);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /:id/classes] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch teacher classes' });
   }
 });
@@ -160,7 +192,8 @@ router.get('/:id/subjects', async (req, res) => {
       .from(subjects).leftJoin(classes, eq(subjects.classId, classes.id))
       .where(eq(subjects.teacherId, Number(req.params.id)));
     res.json(teacherSubjects);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /:id/subjects] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch teacher subjects' });
   }
 });
@@ -175,7 +208,8 @@ router.get('/:id/students', async (req, res) => {
       .from(students).leftJoin(users, eq(students.userId, users.id)).leftJoin(classes, eq(students.classId, classes.id))
       .where(inArray(students.classId, classIds));
     res.json(classStudents);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /:id/students] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch teacher students' });
   }
 });
@@ -190,7 +224,8 @@ router.get('/:id/grades', async (req, res) => {
       .from(grades).leftJoin(students, eq(grades.studentId, students.id)).leftJoin(users, eq(students.userId, users.id)).leftJoin(subjects, eq(grades.subjectId, subjects.id))
       .where(inArray(grades.subjectId, subjectIds));
     res.json(gradeRecords);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /:id/grades] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch teacher grades' });
   }
 });
@@ -210,7 +245,8 @@ router.get('/:id/attendance', async (req, res) => {
       .from(attendance).leftJoin(students, eq(attendance.studentId, students.id)).leftJoin(users, eq(students.userId, users.id)).leftJoin(classes, eq(students.classId, classes.id))
       .where(and(...conditions));
     res.json(records);
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /:id/attendance] Error:', error?.message);
     res.status(500).json({ error: 'Failed to fetch teacher attendance' });
   }
 });
@@ -241,7 +277,8 @@ router.post('/attendance/report', async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=attendance_${classInfo.name}_${date}.pdf`);
     res.send(Buffer.from(pdfBytes));
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Teachers /attendance/report] Error:', error?.message);
     res.status(500).json({ error: 'Failed to generate attendance report' });
   }
 });

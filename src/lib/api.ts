@@ -5,10 +5,19 @@ const api = axios.create({
   baseURL: base ? `${base}/api` : '/api',
 });
 
-// Mock Clerk token injection
-// In a real app, this would use a hook or context
+console.log('[API] VITE_API_URL:', base || '(not set)');
+console.log('[API] baseURL:', api.defaults.baseURL);
+
 export const setAuthToken = (token: string) => {
   api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 };
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error(`[API] ${error.config?.method?.toUpperCase()} ${error.config?.url} ->`, error.response?.status, error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
 
 export default api;
