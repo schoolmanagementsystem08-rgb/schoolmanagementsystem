@@ -78,6 +78,15 @@ export const submissions = pgTable('submissions', {
   grade: real('grade'),
 });
 
+export const teachers = pgTable('teachers', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  employeeId: text('employee_id'),
+  specialization: text('specialization'),
+  phone: text('phone'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const announcements = pgTable('announcements', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),

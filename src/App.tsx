@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from './components/DashboardLayout.tsx';
 import { FoglampHUD } from "foglamp/hud";
 import api from './lib/api.ts';
@@ -13,16 +13,99 @@ import AssignmentsPage from './pages/Assignments.tsx';
 import AnnouncementsPage from './pages/Announcements.tsx';
 import ClassesPage from './pages/Classes.tsx';
 
+import TeacherDashboard from './pages/TeacherDashboard.tsx';
+import TeacherClasses from './pages/TeacherClasses.tsx';
+import TeacherGrades from './pages/TeacherGrades.tsx';
+import TeacherAttendance from './pages/TeacherAttendance.tsx';
+import TeacherReports from './pages/TeacherReports.tsx';
+
+const roles = [
+  { id: 'admin', label: 'Admin', desc: 'Full system access' },
+  { id: 'teacher', label: 'Teacher', desc: 'Manage classes, grades, attendance' },
+  { id: 'student', label: 'Student', desc: 'View grades and assignments' },
+  { id: 'parent', label: 'Parent', desc: 'Monitor student progress' },
+];
+
+function LoginPage() {
+  const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState('admin');
+  const [teacherName, setTeacherName] = useState('');
+
+  const handleLogin = () => {
+    localStorage.setItem('role', selectedRole);
+    if (selectedRole === 'teacher') {
+      const teacherId = localStorage.getItem('teacherId') || '1';
+      const name = teacherName || 'Teacher';
+      localStorage.setItem('userName', name);
+      localStorage.setItem('teacherId', teacherId);
+    } else if (selectedRole === 'admin') {
+      localStorage.setItem('userName', 'Admin User');
+    }
+    navigate('/');
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-xl border border-neutral-200 w-full max-w-md overflow-hidden">
+        <div className="p-8 text-center border-b border-neutral-100">
+          <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">N</div>
+          <h1 className="text-2xl font-bold">NexusEdu</h1>
+          <p className="text-neutral-500 text-sm mt-1">School Management System</p>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">Select Role</label>
+            <div className="space-y-2">
+              {roles.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setSelectedRole(r.id)}
+                  className={`w-full text-left p-3 rounded-xl border transition-all ${
+                    selectedRole === r.id
+                      ? 'border-black bg-black text-white'
+                      : 'border-neutral-200 hover:border-neutral-300'
+                  }`}
+                >
+                  <p className="font-bold">{r.label}</p>
+                  <p className={`text-xs ${selectedRole === r.id ? 'text-white/70' : 'text-neutral-500'}`}>{r.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {selectedRole === 'teacher' && (
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-1.5">Your Name</label>
+              <input
+                type="text"
+                placeholder="e.g. John Smith"
+                value={teacherName}
+                onChange={(e) => setTeacherName(e.target.value)}
+                className="w-full px-3 py-2 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5"
+              />
+            </div>
+          )}
+
+          <button
+            onClick={handleLogin}
+            className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-neutral-800 transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const SettingsPage = () => {
   const [schoolName, setSchoolName] = useState('');
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const savedName = localStorage.getItem('schoolName') || 'NexusEdu Academy';
-    const savedYear = localStorage.getItem('academicYear') || '2026-2027';
-    setSchoolName(savedName);
-    setAcademicYear(savedYear);
+    setSchoolName(localStorage.getItem('schoolName') || 'NexusEdu Academy');
+    setAcademicYear(localStorage.getItem('academicYear') || '2026-2027');
   }, []);
 
   const handleSave = () => {
@@ -146,23 +229,57 @@ const Dashboard = () => {
   );
 };
 
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: string[] }) {
+  const role = localStorage.getItem('role') || 'admin';
+  if (!allowedRoles.includes(role)) {
+    return <Navigate to="/" />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
-  const [role, setRole] = React.useState('admin');
+  const [role, setRole] = React.useState(localStorage.getItem('role') || '');
+
+  useEffect(() => {
+    const checkRole = () => setRole(localStorage.getItem('role') || '');
+    window.addEventListener('storage', checkRole);
+    return () => window.removeEventListener('storage', checkRole);
+  }, []);
+
+  if (!role) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="*" element={<LoginPage />} />
+        </Routes>
+      </Router>
+    );
+  }
 
   return (
     <Router>
       <DashboardLayout userRole={role}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/students" element={<StudentsPage />} />
-          <Route path="/classes" element={<ClassesPage />} />
-          <Route path="/attendance" element={<AttendancePage />} />
-          <Route path="/grades" element={<GradesPage />} />
-          <Route path="/assignments" element={<AssignmentsPage />} />
-          <Route path="/fees" element={<FeesPage />} />
+          {/* Admin routes */}
+          <Route path="/" element={
+            role === 'teacher' ? <TeacherDashboard /> : <Dashboard />
+          } />
+          <Route path="/students" element={<ProtectedRoute allowedRoles={['admin']}><StudentsPage /></ProtectedRoute>} />
+          <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin']}><ClassesPage /></ProtectedRoute>} />
+          <Route path="/attendance" element={<ProtectedRoute allowedRoles={['admin']}><AttendancePage /></ProtectedRoute>} />
+          <Route path="/grades" element={<ProtectedRoute allowedRoles={['admin']}><GradesPage /></ProtectedRoute>} />
+          <Route path="/assignments" element={<ProtectedRoute allowedRoles={['admin']}><AssignmentsPage /></ProtectedRoute>} />
+          <Route path="/fees" element={<ProtectedRoute allowedRoles={['admin']}><FeesPage /></ProtectedRoute>} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+
+          {/* Teacher routes */}
+          <Route path="/teacher/classes" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherClasses /></ProtectedRoute>} />
+          <Route path="/teacher/grades" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherGrades /></ProtectedRoute>} />
+          <Route path="/teacher/attendance" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherAttendance /></ProtectedRoute>} />
+          <Route path="/teacher/reports" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherReports /></ProtectedRoute>} />
+
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </DashboardLayout>

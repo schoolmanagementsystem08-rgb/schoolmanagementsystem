@@ -9,6 +9,7 @@ import assignmentsRouter from './assignments';
 import announcementsRouter from './announcements';
 import messagesRouter from './messages';
 import subjectsRouter from './subjects';
+import teachersRouter from './teachers';
 
 export {
   healthRouter,
@@ -22,4 +23,5 @@ export {
   announcementsRouter,
   messagesRouter,
   subjectsRouter,
+  teachersRouter,
 };

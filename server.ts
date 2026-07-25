@@ -25,6 +25,7 @@ import {
   announcementsRouter,
   messagesRouter,
   subjectsRouter,
+  teachersRouter,
 } from './src/api';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler';
 import { initializeDatabase } from './src/db';
@@ -51,6 +52,7 @@ async function startServer() {
   app.use('/api/announcements', announcementsRouter);
   app.use('/api/messages', messagesRouter);
   app.use('/api/subjects', subjectsRouter);
+  app.use('/api/teachers', teachersRouter);
 
   // AI endpoint
   app.post('/api/ai', async (req, res) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -11,9 +11,9 @@ import {
   MessageSquare, 
   Settings,
   Menu,
-  X,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  ClipboardList,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,15 +33,19 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/', roles: ['admin', 'teacher', 'student', 'parent'] },
-  { icon: Users, label: 'Students', href: '/students', roles: ['admin', 'teacher'] },
-  { icon: BookOpen, label: 'Classes', href: '/classes', roles: ['admin', 'teacher'] },
-  { icon: Calendar, label: 'Attendance', href: '/attendance', roles: ['admin', 'teacher', 'student'] },
-  { icon: GraduationCap, label: 'Grades', href: '/grades', roles: ['admin', 'teacher', 'student', 'parent'] },
-  { icon: FileText, label: 'Assignments', href: '/assignments', roles: ['teacher', 'student'] },
+  // Admin-only
+  { icon: Users, label: 'Students', href: '/students', roles: ['admin'] },
+  { icon: BookOpen, label: 'Classes', href: '/classes', roles: ['admin'] },
   { icon: CreditCard, label: 'Fees', href: '/fees', roles: ['admin', 'parent'] },
+  // Teacher-only
+  { icon: ClipboardList, label: 'My Classes', href: '/teacher/classes', roles: ['teacher'] },
+  { icon: Calendar, label: 'Attendance', href: '/teacher/attendance', roles: ['teacher'] },
+  { icon: GraduationCap, label: 'Grades', href: '/teacher/grades', roles: ['teacher'] },
+  { icon: FileText, label: 'Reports', href: '/teacher/reports', roles: ['teacher'] },
+  // Shared
   { icon: Bell, label: 'Announcements', href: '/announcements', roles: ['admin', 'teacher', 'student', 'parent'] },
   { icon: MessageSquare, label: 'Messages', href: '/messages', roles: ['admin', 'teacher', 'student', 'parent'] },
-  { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin'] },
+  { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin', 'teacher'] },
 ];
 
 export function DashboardLayout({ children, userRole }: { children: React.ReactNode, userRole: string }) {
@@ -109,11 +113,11 @@ export function DashboardLayout({ children, userRole }: { children: React.ReactN
 
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold">Admin User</p>
+              <p className="text-sm font-semibold">{localStorage.getItem('userName') || 'User'}</p>
               <p className="text-xs text-neutral-500 capitalize">{userRole}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-neutral-200 border-2 border-white shadow-sm flex items-center justify-center text-xs font-bold text-neutral-500">
-              A
+              {(localStorage.getItem('userName') || 'U').charAt(0)}
             </div>
           </div>
         </header>
