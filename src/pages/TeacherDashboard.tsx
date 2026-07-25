@@ -1,29 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Users, GraduationCap, Calendar } from 'lucide-react';
 import api from '../lib/api.ts';
+import { useAuth } from '../lib/useAuth.tsx';
 
 export default function TeacherDashboard() {
-  const teacherId = Number(localStorage.getItem('teacherId') || 1);
-  const [teacher, setTeacher] = useState<any>(null);
+  const { token, teacher } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const headers = { Authorization: `Bearer ${token}` };
+
   useEffect(() => {
-    const teacherName = localStorage.getItem('teacherName') || 'Teacher';
+    if (!token) return;
     Promise.all([
-      api.get(`/teachers/${teacherId}`).catch(() => ({ data: { name: teacherName } })),
-      api.get(`/teachers/${teacherId}/classes`),
-      api.get(`/teachers/${teacherId}/students`),
-      api.get(`/teachers/${teacherId}/subjects`),
-    ]).then(([t, c, s, sub]) => {
-      setTeacher(t.data);
+      api.get('/teachers/me/classes', { headers }),
+      api.get('/teachers/me/students', { headers }),
+      api.get('/teachers/me/subjects', { headers }),
+    ]).then(([c, s, sub]) => {
       setClasses(Array.isArray(c.data) ? c.data : []);
       setStudents(Array.isArray(s.data) ? s.data : []);
       setSubjects(Array.isArray(sub.data) ? sub.data : []);
     }).finally(() => setLoading(false));
-  }, [teacherId]);
+  }, [token]);
 
   if (loading) return <p className="text-center text-neutral-400 py-12">Loading dashboard...</p>;
 

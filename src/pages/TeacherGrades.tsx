@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Award, Plus, Edit2, Trash2, X, Download } from 'lucide-react';
 import api from '../lib/api.ts';
+import { useAuth } from '../lib/useAuth.tsx';
 
 export default function TeacherGrades() {
-  const teacherId = Number(localStorage.getItem('teacherId') || 1);
+  const { token } = useAuth();
   const [grades, setGrades] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -15,17 +16,20 @@ export default function TeacherGrades() {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [filterClass, setFilterClass] = useState('');
 
+  const headers = { Authorization: `Bearer ${token}` };
+
   useEffect(() => {
+    if (!token) return;
     Promise.all([
-      api.get(`/teachers/${teacherId}/grades`),
-      api.get(`/teachers/${teacherId}/students`),
-      api.get(`/teachers/${teacherId}/subjects`),
+      api.get('/teachers/me/grades', { headers }),
+      api.get('/teachers/me/students', { headers }),
+      api.get('/teachers/me/subjects', { headers }),
     ]).then(([g, s, sub]) => {
       setGrades(Array.isArray(g.data) ? g.data : []);
       setStudents(Array.isArray(s.data) ? s.data : []);
       setSubjects(Array.isArray(sub.data) ? sub.data : []);
     }).finally(() => setLoading(false));
-  }, [teacherId]);
+  }, [token]);
 
   const filteredGrades = filterClass
     ? grades.filter(g => g.studentId && students.find(s => s.id === g.studentId)?.classId === Number(filterClass))
@@ -49,7 +53,7 @@ export default function TeacherGrades() {
         await api.post('/grades', form);
       }
       setShowModal(false);
-      const res = await api.get(`/teachers/${teacherId}/grades`);
+      const res = await api.get('/teachers/me/grades', { headers });
       setGrades(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to save grade', err);
@@ -62,7 +66,7 @@ export default function TeacherGrades() {
     try {
       await api.delete(`/grades/${id}`);
       setDeleting(null);
-      const res = await api.get(`/teachers/${teacherId}/grades`);
+      const res = await api.get('/teachers/me/grades', { headers });
       setGrades(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to delete grade', err);

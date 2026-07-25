@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Users } from 'lucide-react';
 import api from '../lib/api.ts';
+import { useAuth } from '../lib/useAuth.tsx';
 
 export default function TeacherReports() {
-  const teacherId = Number(localStorage.getItem('teacherId') || 1);
+  const { token } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
@@ -11,15 +12,18 @@ export default function TeacherReports() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [generating, setGenerating] = useState(false);
 
+  const headers = { Authorization: `Bearer ${token}` };
+
   useEffect(() => {
+    if (!token) return;
     Promise.all([
-      api.get(`/teachers/${teacherId}/classes`),
-      api.get(`/teachers/${teacherId}/students`),
+      api.get('/teachers/me/classes', { headers }),
+      api.get('/teachers/me/students', { headers }),
     ]).then(([c, s]) => {
       setClasses(Array.isArray(c.data) ? c.data : []);
       setStudents(Array.isArray(s.data) ? s.data : []);
     });
-  }, [teacherId]);
+  }, [token]);
 
   const filteredStudents = selectedClass
     ? students.filter((s: any) => String(s.classId) === selectedClass)

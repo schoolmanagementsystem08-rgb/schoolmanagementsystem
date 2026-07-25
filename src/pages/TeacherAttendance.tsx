@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Check, X, Clock, Download } from 'lucide-react';
 import api from '../lib/api.ts';
+import { useAuth } from '../lib/useAuth.tsx';
 
 export default function TeacherAttendance() {
-  const teacherId = Number(localStorage.getItem('teacherId') || 1);
+  const { token } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<number, string>>({});
-  const [existingRecords, setExistingRecords] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  const headers = { Authorization: `Bearer ${token}` };
+
   useEffect(() => {
+    if (!token) return;
     loadClasses();
-  }, [teacherId]);
+  }, [token]);
 
   useEffect(() => {
     if (selectedClass) {
@@ -32,7 +35,7 @@ export default function TeacherAttendance() {
 
   const loadClasses = async () => {
     try {
-      const res = await api.get(`/teachers/${teacherId}/classes`);
+      const res = await api.get('/teachers/me/classes', { headers });
       setClasses(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to load classes', err);
@@ -42,7 +45,7 @@ export default function TeacherAttendance() {
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/teachers/${teacherId}/students`);
+      const res = await api.get('/teachers/me/students', { headers });
       const all = Array.isArray(res.data) ? res.data : [];
       setStudents(all.filter((s: any) => String(s.classId) === selectedClass));
     } catch (err) {
@@ -56,7 +59,6 @@ export default function TeacherAttendance() {
     try {
       const res = await api.get(`/attendance/class/${selectedClass}`, { params: { date } });
       if (res.data.attendance) {
-        setExistingRecords(res.data.attendance);
         setAttendance(res.data.attendance);
       }
     } catch (err) {

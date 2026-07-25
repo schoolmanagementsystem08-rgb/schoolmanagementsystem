@@ -1,26 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Users, BookOpen } from 'lucide-react';
 import api from '../lib/api.ts';
+import { useAuth } from '../lib/useAuth.tsx';
 
 export default function TeacherClasses() {
-  const teacherId = Number(localStorage.getItem('teacherId') || 1);
+  const { token } = useAuth();
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
 
+  const headers = { Authorization: `Bearer ${token}` };
+
   useEffect(() => {
+    if (!token) return;
     Promise.all([
-      api.get(`/teachers/${teacherId}/classes`),
-      api.get(`/teachers/${teacherId}/students`),
-      api.get(`/teachers/${teacherId}/subjects`),
+      api.get('/teachers/me/classes', { headers }),
+      api.get('/teachers/me/students', { headers }),
+      api.get('/teachers/me/subjects', { headers }),
     ]).then(([c, s, sub]) => {
       setClasses(Array.isArray(c.data) ? c.data : []);
       setStudents(Array.isArray(s.data) ? s.data : []);
       setSubjects(Array.isArray(sub.data) ? sub.data : []);
     }).finally(() => setLoading(false));
-  }, [teacherId]);
+  }, [token]);
 
   if (loading) return <p className="text-center text-neutral-400 py-12">Loading...</p>;
 

@@ -52,7 +52,7 @@ const sidebarItems: SidebarItem[] = [
 export function DashboardLayout({ children, userRole }: { children: React.ReactNode, userRole: string }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
 
   const filteredItems = sidebarItems.filter(item => item.roles.includes(userRole));
 
@@ -115,11 +115,11 @@ export function DashboardLayout({ children, userRole }: { children: React.ReactN
 
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold">{localStorage.getItem('userName') || 'User'}</p>
+              <p className="text-sm font-semibold">{profile?.name || 'User'}</p>
               <p className="text-xs text-neutral-500 capitalize">{userRole}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-neutral-200 border-2 border-white shadow-sm flex items-center justify-center text-xs font-bold text-neutral-500">
-              {(localStorage.getItem('userName') || 'U').charAt(0)}
+              {(profile?.name || 'U').charAt(0)}
             </div>
           </div>
         </header>

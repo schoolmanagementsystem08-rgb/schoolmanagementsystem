@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { db } from '../db';
-import { users } from '../db/schema';
+import { users, teachers } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 const supabase = createClient(env.SUPABASE_URL || '', env.SUPABASE_ANON_KEY || '');
@@ -49,6 +49,13 @@ router.post('/profile', async (req, res) => {
       })
       .returning();
 
+    if (role === 'teacher') {
+      await db.insert(teachers).values({
+        userId: created.id,
+        specialization: authUser.user_metadata?.specialization || 'General',
+      });
+    }
+
     res.status(201).json({ user: created });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Profile operation failed' });
@@ -74,7 +81,13 @@ router.get('/me', async (req, res) => {
 
     if (!profile) return res.status(404).json({ error: 'Profile not found. Complete signup first.' });
 
-    res.json({ user: profile });
+    let teacherRecord = null;
+    if (profile.role === 'teacher') {
+      const [t] = await db.select().from(teachers).where(eq(teachers.userId, profile.id)).limit(1);
+      teacherRecord = t || null;
+    }
+
+    res.json({ user: profile, teacher: teacherRecord });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch profile' });
   }
