@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { db } from '../db';
 import { teachers, classes, subjects, students, users, attendance, grades } from '../db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 const supabase = createClient(env.SUPABASE_URL || '', env.SUPABASE_ANON_KEY || '');
@@ -280,6 +280,164 @@ router.post('/attendance/report', async (req, res) => {
   } catch (error: any) {
     console.error('[Teachers /attendance/report] Error:', error?.message);
     res.status(500).json({ error: 'Failed to generate attendance report' });
+  }
+});
+
+router.get('/', async (req, res) => {
+  try {
+    const allTeachers = await db
+      .select({
+        id: teachers.id,
+        userId: teachers.userId,
+        name: users.name,
+        email: users.email,
+        employeeId: teachers.employeeId,
+        specialization: teachers.specialization,
+        phone: teachers.phone,
+        createdAt: teachers.createdAt,
+      })
+      .from(teachers)
+      .leftJoin(users, eq(teachers.userId, users.id))
+      .orderBy(users.name);
+
+    const teacherIds = allTeachers.map(t => t.id);
+    let classCounts: Record<number, number> = {};
+    if (teacherIds.length > 0) {
+      const classRows = await db
+        .select({ teacherId: classes.teacherId, count: sql<number>`count(*)` })
+        .from(classes)
+        .where(inArray(classes.teacherId, teacherIds))
+        .groupBy(classes.teacherId);
+      for (const row of classRows) {
+        classCounts[row.teacherId] = Number(row.count);
+      }
+    }
+
+    const result = allTeachers.map(t => ({
+      ...t,
+      classCount: classCounts[t.id] || 0,
+    }));
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('[Teachers GET /] Error:', error?.message);
+    res.status(500).json({ error: 'Failed to fetch teachers' });
+  }
+});
+
+router.post('/', async (req, res) => {
+  try {
+    const { name, email, specialization, phone, employeeId } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    const [createdUser] = await db.insert(users).values({
+      clerkId: `manual_${Date.now()}`,
+      name,
+      email,
+      role: 'teacher',
+    }).returning();
+
+    const [createdTeacher] = await db.insert(teachers).values({
+      userId: createdUser.id,
+      employeeId: employeeId || null,
+      specialization: specialization || 'General',
+      phone: phone || null,
+    }).returning();
+
+    res.status(201).json({
+      id: createdTeacher.id,
+      userId: createdUser.id,
+      name: createdUser.name,
+      email: createdUser.email,
+      employeeId: createdTeacher.employeeId,
+      specialization: createdTeacher.specialization,
+      phone: createdTeacher.phone,
+    });
+  } catch (error: any) {
+    console.error('[Teachers POST /] Error:', error?.message);
+    res.status(500).json({ error: 'Failed to create teacher' });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    const teacherId = Number(req.params.id);
+    const [existing] = await db.select().from(teachers).where(eq(teachers.id, teacherId)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Teacher not found' });
+
+    const { name, email, specialization, phone, employeeId } = req.body;
+
+    if (name || email) {
+      await db.update(users).set({
+        ...(name && { name }),
+        ...(email && { email }),
+      }).where(eq(users.id, existing.userId));
+    }
+
+    await db.update(teachers).set({
+      ...(specialization !== undefined && { specialization }),
+      ...(phone !== undefined && { phone }),
+      ...(employeeId !== undefined && { employeeId }),
+    }).where(eq(teachers.id, teacherId));
+
+    const [updated] = await db
+      .select({
+        id: teachers.id,
+        userId: teachers.userId,
+        name: users.name,
+        email: users.email,
+        employeeId: teachers.employeeId,
+        specialization: teachers.specialization,
+        phone: teachers.phone,
+      })
+      .from(teachers)
+      .leftJoin(users, eq(teachers.userId, users.id))
+      .where(eq(teachers.id, teacherId))
+      .limit(1);
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('[Teachers PUT /:id] Error:', error?.message);
+    res.status(500).json({ error: 'Failed to update teacher' });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const teacherId = Number(req.params.id);
+    const [existing] = await db.select().from(teachers).where(eq(teachers.id, teacherId)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Teacher not found' });
+
+    await db.update(classes).set({ teacherId: null }).where(eq(classes.teacherId, teacherId));
+    await db.delete(teachers).where(eq(teachers.id, teacherId));
+    await db.delete(users).where(eq(users.id, existing.userId));
+
+    res.json({ message: 'Teacher deleted successfully' });
+  } catch (error: any) {
+    console.error('[Teachers DELETE /:id] Error:', error?.message);
+    res.status(500).json({ error: 'Failed to delete teacher' });
+  }
+});
+
+router.get('/:id/classes/available', async (req, res) => {
+  try {
+    const teacherId = Number(req.params.id);
+    const available = await db
+      .select({
+        id: classes.id,
+        name: classes.name,
+        academicYear: classes.academicYear,
+        currentTeacherId: classes.teacherId,
+      })
+      .from(classes)
+      .where(sql`${classes.teacherId} IS NULL OR ${classes.teacherId} = ${teacherId}`)
+      .orderBy(classes.name);
+    res.json(available);
+  } catch (error: any) {
+    console.error('[Teachers /:id/classes/available] Error:', error?.message);
+    res.status(500).json({ error: 'Failed to fetch available classes' });
   }
 });
 

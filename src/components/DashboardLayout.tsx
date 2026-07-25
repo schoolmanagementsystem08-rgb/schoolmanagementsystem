@@ -36,6 +36,7 @@ const sidebarItems: SidebarItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/', roles: ['admin', 'teacher', 'student', 'parent'] },
   // Admin-only
   { icon: Users, label: 'Students', href: '/students', roles: ['admin'] },
+  { icon: GraduationCap, label: 'Teachers', href: '/teachers', roles: ['admin'] },
   { icon: BookOpen, label: 'Classes', href: '/classes', roles: ['admin'] },
   { icon: CreditCard, label: 'Fees', href: '/fees', roles: ['admin', 'parent'] },
   // Teacher-only

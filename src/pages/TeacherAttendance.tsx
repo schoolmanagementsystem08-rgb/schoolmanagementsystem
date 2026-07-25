@@ -18,7 +18,18 @@ export default function TeacherAttendance() {
 
   useEffect(() => {
     if (!token) return;
-    loadClasses();
+    let mounted = true;
+    const fetchClasses = async () => {
+      try {
+        const res = await api.get('/teachers/me/classes', { headers });
+        if (mounted) setClasses(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error('Failed to load classes', err);
+      }
+    };
+    fetchClasses();
+    const interval = setInterval(fetchClasses, 30000);
+    return () => { mounted = false; clearInterval(interval); };
   }, [token]);
 
   useEffect(() => {

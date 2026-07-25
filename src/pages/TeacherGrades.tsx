@@ -20,15 +20,22 @@ export default function TeacherGrades() {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([
-      api.get('/teachers/me/grades', { headers }),
-      api.get('/teachers/me/students', { headers }),
-      api.get('/teachers/me/subjects', { headers }),
-    ]).then(([g, s, sub]) => {
-      setGrades(Array.isArray(g.data) ? g.data : []);
-      setStudents(Array.isArray(s.data) ? s.data : []);
-      setSubjects(Array.isArray(sub.data) ? sub.data : []);
-    }).finally(() => setLoading(false));
+    let mounted = true;
+    const fetch = () => {
+      Promise.all([
+        api.get('/teachers/me/grades', { headers }),
+        api.get('/teachers/me/students', { headers }),
+        api.get('/teachers/me/subjects', { headers }),
+      ]).then(([g, s, sub]) => {
+        if (!mounted) return;
+        setGrades(Array.isArray(g.data) ? g.data : []);
+        setStudents(Array.isArray(s.data) ? s.data : []);
+        setSubjects(Array.isArray(sub.data) ? sub.data : []);
+      }).finally(() => { if (mounted) setLoading(false); });
+    };
+    fetch();
+    const interval = setInterval(fetch, 30000);
+    return () => { mounted = false; clearInterval(interval); };
   }, [token]);
 
   const filteredGrades = filterClass

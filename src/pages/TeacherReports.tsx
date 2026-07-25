@@ -16,13 +16,20 @@ export default function TeacherReports() {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([
-      api.get('/teachers/me/classes', { headers }),
-      api.get('/teachers/me/students', { headers }),
-    ]).then(([c, s]) => {
-      setClasses(Array.isArray(c.data) ? c.data : []);
-      setStudents(Array.isArray(s.data) ? s.data : []);
-    });
+    let mounted = true;
+    const fetch = () => {
+      Promise.all([
+        api.get('/teachers/me/classes', { headers }),
+        api.get('/teachers/me/students', { headers }),
+      ]).then(([c, s]) => {
+        if (!mounted) return;
+        setClasses(Array.isArray(c.data) ? c.data : []);
+        setStudents(Array.isArray(s.data) ? s.data : []);
+      });
+    };
+    fetch();
+    const interval = setInterval(fetch, 30000);
+    return () => { mounted = false; clearInterval(interval); };
   }, [token]);
 
   const filteredStudents = selectedClass

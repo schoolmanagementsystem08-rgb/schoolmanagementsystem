@@ -15,15 +15,22 @@ export default function TeacherClasses() {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([
-      api.get('/teachers/me/classes', { headers }),
-      api.get('/teachers/me/students', { headers }),
-      api.get('/teachers/me/subjects', { headers }),
-    ]).then(([c, s, sub]) => {
-      setClasses(Array.isArray(c.data) ? c.data : []);
-      setStudents(Array.isArray(s.data) ? s.data : []);
-      setSubjects(Array.isArray(sub.data) ? sub.data : []);
-    }).finally(() => setLoading(false));
+    let mounted = true;
+    const fetch = () => {
+      Promise.all([
+        api.get('/teachers/me/classes', { headers }),
+        api.get('/teachers/me/students', { headers }),
+        api.get('/teachers/me/subjects', { headers }),
+      ]).then(([c, s, sub]) => {
+        if (!mounted) return;
+        setClasses(Array.isArray(c.data) ? c.data : []);
+        setStudents(Array.isArray(s.data) ? s.data : []);
+        setSubjects(Array.isArray(sub.data) ? sub.data : []);
+      }).finally(() => { if (mounted) setLoading(false); });
+    };
+    fetch();
+    const interval = setInterval(fetch, 30000);
+    return () => { mounted = false; clearInterval(interval); };
   }, [token]);
 
   if (loading) return <p className="text-center text-neutral-400 py-12">Loading...</p>;
