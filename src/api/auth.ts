@@ -92,8 +92,28 @@ router.get('/me', async (req, res) => {
       .limit(1);
 
     if (!profile) {
-      console.log('[Auth /me] No profile found for clerkId:', authUser.id);
-      return res.status(404).json({ error: 'Profile not found. Complete signup first.' });
+      console.log('[Auth /me] No profile found for clerkId:', authUser.id, '— auto-creating...');
+      const role = authUser.user_metadata?.role || 'student';
+      const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
+      const [created] = await db.insert(users).values({
+        clerkId: authUser.id,
+        name: displayName,
+        email: authUser.email || '',
+        role,
+      }).returning();
+      if (role === 'teacher') {
+        await db.insert(teachers).values({
+          userId: created.id,
+          specialization: authUser.user_metadata?.specialization || 'General',
+        });
+      }
+      console.log('[Auth /me] Auto-created profile:', created.id);
+      let teacherRecord = null;
+      if (role === 'teacher') {
+        const [t] = await db.select().from(teachers).where(eq(teachers.userId, created.id)).limit(1);
+        teacherRecord = t || null;
+      }
+      return res.json({ user: created, teacher: teacherRecord });
     }
     console.log('[Auth /me] Found profile:', profile.id, profile.name, profile.role);
 
