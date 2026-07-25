@@ -166,7 +166,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </DashboardLayout>
-      <FoglampHUD />
+      {import.meta.env.DEV && <FoglampHUD />}
     </Router>
   );
 }
