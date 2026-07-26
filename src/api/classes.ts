@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { classes, users } from '../db/schema';
+import { classes, teachers, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
 
@@ -18,7 +18,8 @@ router.get('/', async (req, res) => {
         academicYear: classes.academicYear,
       })
       .from(classes)
-      .leftJoin(users, eq(classes.teacherId, users.id));
+      .leftJoin(teachers, eq(classes.teacherId, teachers.id))
+      .leftJoin(users, eq(teachers.userId, users.id));
 
     res.json(allClasses);
   } catch (error) {
@@ -70,7 +71,8 @@ router.put('/:id', async (req, res) => {
         academicYear: classes.academicYear,
       })
       .from(classes)
-      .leftJoin(users, eq(classes.teacherId, users.id))
+      .leftJoin(teachers, eq(classes.teacherId, teachers.id))
+      .leftJoin(users, eq(teachers.userId, users.id))
       .where(eq(classes.id, Number(id)))
       .limit(1);
 

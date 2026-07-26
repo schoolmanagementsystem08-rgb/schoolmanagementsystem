@@ -439,6 +439,7 @@ router.delete('/:id', async (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Teacher not found' });
 
     await db.update(classes).set({ teacherId: null }).where(eq(classes.teacherId, teacherId));
+    await db.update(subjects).set({ teacherId: null }).where(eq(subjects.teacherId, teacherId));
     await softDelete('teachers', teacherId, { deletedUserName: existing.name, deletedUserEmail: existing.email });
     await softDelete('users', existing.userId);
 

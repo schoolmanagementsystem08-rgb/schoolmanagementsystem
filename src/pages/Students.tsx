@@ -9,6 +9,7 @@ interface Guardian {
 interface Student {
   id: number; studentId: string | null; name: string; email: string; gender: string | null;
   classId: number; className: string | null; academicYear: string | null;
+  teacherName: string | null;
   enrollmentDate: string; status: string;
   guardianId: number | null; guardianName: string | null; guardianPhone: string | null;
   guardianEmail: string | null; guardianRelationship: string | null;
@@ -168,6 +169,7 @@ export default function StudentsPage() {
                 <th className="px-4 py-3">Full Name</th>
                 <th className="px-4 py-3">Gender</th>
                 <th className="px-4 py-3">Class</th>
+                <th className="px-4 py-3">Head Teacher</th>
                 <th className="px-4 py-3">Guardian</th>
                 <th className="px-4 py-3">Balance</th>
                 <th className="px-4 py-3">Status</th>
@@ -176,9 +178,9 @@ export default function StudentsPage() {
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {isLoading ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-neutral-400">Loading students...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-neutral-400">Loading students...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-neutral-400">
+                <tr><td colSpan={9} className="px-4 py-12 text-center text-neutral-400">
                   {search ? 'No students match your search.' : 'No students enrolled yet.'}
                 </td></tr>
               ) : filtered.map((s) => {
@@ -199,6 +201,7 @@ export default function StudentsPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-neutral-600">{s.gender || '-'}</td>
                     <td className="px-4 py-3 text-sm text-neutral-600">{s.className || `#${s.classId}`}</td>
+                    <td className="px-4 py-3 text-sm text-neutral-600">{s.teacherName || '-'}</td>
                     <td className="px-4 py-3 text-sm text-neutral-600">{s.guardianName || '-'}</td>
                     <td className="px-4 py-3">
                       <span className={`text-sm font-semibold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -359,6 +362,7 @@ export default function StudentsPage() {
                   <div><span className="text-neutral-400">Email</span><p>{viewing.email}</p></div>
                   <div><span className="text-neutral-400">Gender</span><p>{viewing.gender || '-'}</p></div>
                   <div><span className="text-neutral-400">Class</span><p>{viewing.className || `#${viewing.classId}`}</p></div>
+                  <div><span className="text-neutral-400">Head Teacher</span><p>{viewing.teacherName || '-'}</p></div>
                   <div><span className="text-neutral-400">Academic Year</span><p>{viewing.academicYear || '-'}</p></div>
                   <div><span className="text-neutral-400">Enrolled</span><p>{new Date(viewing.enrollmentDate).toLocaleDateString()}</p></div>
                 </div>

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { db } from '../db';
-import { students, users, classes, guardians, fees } from '../db/schema';
+import { students, users, classes, guardians, fees, teachers } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
 
@@ -19,6 +19,7 @@ router.get('/', async (req, res) => {
         classId: students.classId,
         className: classes.name,
         academicYear: classes.academicYear,
+        teacherName: sql<string>`(SELECT tu.name FROM teachers t JOIN users tu ON t.user_id = tu.id WHERE t.id = ${classes.teacherId})`,
         enrollmentDate: students.enrollmentDate,
         status: students.status,
         guardianId: students.guardianId,
@@ -53,6 +54,7 @@ router.get('/:id', async (req, res) => {
         classId: students.classId,
         className: classes.name,
         academicYear: classes.academicYear,
+        teacherName: sql<string>`(SELECT tu.name FROM teachers t JOIN users tu ON t.user_id = tu.id WHERE t.id = ${classes.teacherId})`,
         enrollmentDate: students.enrollmentDate,
         status: students.status,
         guardianId: students.guardianId,
@@ -206,7 +208,9 @@ router.put('/:id', async (req, res) => {
       .select({
         id: students.id, studentId: students.studentId, name: users.name, email: users.email,
         gender: students.gender, classId: students.classId, className: classes.name,
-        academicYear: classes.academicYear, enrollmentDate: students.enrollmentDate,
+        academicYear: classes.academicYear,
+        teacherName: sql<string>`(SELECT tu.name FROM teachers t JOIN users tu ON t.user_id = tu.id WHERE t.id = ${classes.teacherId})`,
+        enrollmentDate: students.enrollmentDate,
         status: students.status, guardianId: students.guardianId,
         guardianName: guardians.name, guardianPhone: guardians.phone,
         guardianEmail: guardians.email, guardianRelationship: guardians.relationship,
