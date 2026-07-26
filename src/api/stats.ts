@@ -64,6 +64,67 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/monthly', async (req, res) => {
+  try {
+    const months = 6;
+    const monthlyData: { month: string; students: number; attendanceRate: number; feesCollected: number; feesOutstanding: number }[] = [];
+
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const monthStr = d.toLocaleString('default', { month: 'short' });
+
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 1);
+
+      const [studentCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(students)
+        .where(sql`${students.enrollmentDate} >= ${start} AND ${students.enrollmentDate} < ${end}`);
+
+      const [presentCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(attendance)
+        .where(sql`${attendance.date} >= ${start} AND ${attendance.date} < ${end} AND ${attendance.status} = 'present'`);
+      const [totalAtt] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(attendance)
+        .where(sql`${attendance.date} >= ${start} AND ${attendance.date} < ${end}`);
+      const attRate = totalAtt.count > 0 ? Math.round((presentCount.count / totalAtt.count) * 100) : 0;
+
+      const feeRows = await db
+        .select({
+          status: fees.status,
+          total: sql<number>`coalesce(sum(${fees.amount}), 0)`,
+        })
+        .from(fees)
+        .where(sql`${fees.dueDate} >= ${start} AND ${fees.dueDate} < ${end}`)
+        .groupBy(fees.status);
+
+      let collected = 0, outstanding = 0;
+      for (const r of feeRows) {
+        if (r.status === 'Paid') collected += Number(r.total);
+        else outstanding += Number(r.total);
+      }
+
+      monthlyData.push({
+        month: monthStr,
+        students: Number(studentCount.count),
+        attendanceRate: attRate,
+        feesCollected: collected,
+        feesOutstanding: outstanding,
+      });
+    }
+
+    res.json(monthlyData);
+  } catch (error: any) {
+    console.error('[Stats /monthly] Error:', error?.message);
+    res.status(500).json({ error: 'Failed to fetch monthly stats' });
+  }
+});
+
 router.get('/recent-activity', async (req, res) => {
   try {
     const recentAnnouncements = await db
