@@ -11,7 +11,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT role FROM public.users WHERE auth_id = auth.uid()::text
+  SELECT role FROM public.users WHERE auth_id = auth.uid()
 $$;
 
 -- 2. Helper: get the current user's custom `users.id`
@@ -22,7 +22,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT id FROM public.users WHERE auth_id = auth.uid()::text
+  SELECT id FROM public.users WHERE auth_id = auth.uid()
 $$;
 
 -- 3. Helper: get a teacher's `teachers.id` from the current user
@@ -33,7 +33,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT t.id FROM public.teachers t JOIN public.users u ON t.user_id = u.id WHERE u.auth_id = auth.uid()::text
+  SELECT t.id FROM public.teachers t JOIN public.users u ON t.user_id = u.id WHERE u.auth_id = auth.uid()
 $$;
 
 -- 4. Helper: get class IDs the current teacher teaches
@@ -75,7 +75,7 @@ DROP POLICY IF EXISTS "users_update"  ON public.users;
 DROP POLICY IF EXISTS "users_delete"  ON public.users;
 
 CREATE POLICY "users_select" ON public.users FOR SELECT USING (
-  auth_id = auth.uid()::text                               -- own record
+  auth_id = auth.uid()                               -- own record
   OR public.current_user_role() = 'admin'              -- any admin
   OR public.current_user_role() = 'superadmin'
 );
@@ -85,7 +85,7 @@ CREATE POLICY "users_insert" ON public.users FOR INSERT WITH CHECK (
 );
 
 CREATE POLICY "users_update" ON public.users FOR UPDATE USING (
-  auth_id = auth.uid()::text                                -- update own profile
+  auth_id = auth.uid()                                -- update own profile
   OR public.current_user_role() IN ('admin', 'superadmin')
 );
 
@@ -121,7 +121,7 @@ CREATE POLICY "classes_select" ON public.classes FOR SELECT USING (
   OR EXISTS (                                           -- student's class
     SELECT 1 FROM public.students s
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND s.class_id = classes.id
+    WHERE u.auth_id = auth.uid() AND s.class_id = classes.id
   )
 );
 
@@ -203,7 +203,7 @@ CREATE POLICY "subjects_select" ON public.subjects FOR SELECT USING (
   OR EXISTS (                                           -- student's class subjects
     SELECT 1 FROM public.students s
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND s.class_id = subjects.class_id
+    WHERE u.auth_id = auth.uid() AND s.class_id = subjects.class_id
   )
 );
 
@@ -227,7 +227,7 @@ CREATE POLICY "attendance_select" ON public.attendance FOR SELECT USING (
   OR EXISTS (                                           -- student sees own attendance
     SELECT 1 FROM public.students s
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND s.id = attendance.student_id
+    WHERE u.auth_id = auth.uid() AND s.id = attendance.student_id
   )
 );
 
@@ -256,7 +256,7 @@ CREATE POLICY "grades_select" ON public.grades FOR SELECT USING (
   OR EXISTS (                                           -- student sees own grades
     SELECT 1 FROM public.students s
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND s.id = grades.student_id
+    WHERE u.auth_id = auth.uid() AND s.id = grades.student_id
   )
 );
 
@@ -285,7 +285,7 @@ CREATE POLICY "assignments_select" ON public.assignments FOR SELECT USING (
     SELECT 1 FROM public.subjects sub
     JOIN public.students s ON s.class_id = sub.class_id
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND sub.id = assignments.subject_id
+    WHERE u.auth_id = auth.uid() AND sub.id = assignments.subject_id
   )
 );
 
@@ -314,7 +314,7 @@ CREATE POLICY "submissions_select" ON public.submissions FOR SELECT USING (
   OR EXISTS (                                           -- student sees own submissions
     SELECT 1 FROM public.students s
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND s.id = submissions.student_id
+    WHERE u.auth_id = auth.uid() AND s.id = submissions.student_id
   )
 );
 
@@ -322,7 +322,7 @@ CREATE POLICY "submissions_insert" ON public.submissions FOR INSERT WITH CHECK (
   EXISTS (                                              -- student submits their own work
     SELECT 1 FROM public.students s
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND s.id = submissions.student_id
+    WHERE u.auth_id = auth.uid() AND s.id = submissions.student_id
   )
 );
 
@@ -346,7 +346,7 @@ CREATE POLICY "fees_select" ON public.fees FOR SELECT USING (
   OR EXISTS (                                           -- student sees own fees
     SELECT 1 FROM public.students s
     JOIN public.users u ON s.user_id = u.id
-    WHERE u.auth_id = auth.uid()::text AND s.id = fees.student_id
+    WHERE u.auth_id = auth.uid() AND s.id = fees.student_id
   )
   OR EXISTS (                                           -- parent sees children's fees
     SELECT 1 FROM public.students s

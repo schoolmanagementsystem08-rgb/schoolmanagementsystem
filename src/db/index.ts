@@ -16,13 +16,12 @@ export async function initializeDatabase() {
       await client.query(`
         CREATE TABLE IF NOT EXISTS "users" (
           "id" serial PRIMARY KEY NOT NULL,
-          "auth_id" text NOT NULL,
+          "auth_id" uuid NOT NULL,
           "name" text NOT NULL,
           "email" text NOT NULL,
           "role" text NOT NULL,
           "school_id" integer,
-          "created_at" timestamp DEFAULT now() NOT NULL,
-          CONSTRAINT "users_auth_id_unique" UNIQUE("auth_id")
+          "created_at" timestamp DEFAULT now() NOT NULL
         );
         CREATE TABLE IF NOT EXISTS "schools" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "address" text, "admin_id" integer, "settings" jsonb);
         CREATE TABLE IF NOT EXISTS "classes" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "school_id" integer NOT NULL, "teacher_id" integer, "academic_year" text NOT NULL);
@@ -41,6 +40,7 @@ export async function initializeDatabase() {
       `);
 
       await client.query(`
+        -- Rename clerk_id -> auth_id if old column still exists
         DO $$
         BEGIN
           IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='clerk_id') THEN
@@ -50,6 +50,19 @@ export async function initializeDatabase() {
       `);
 
       await client.query(`
+        -- Convert auth_id from text to uuid if it's still text type
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='auth_id' AND data_type='text') THEN
+            -- Replace any non-UUID values with generated UUIDs
+            UPDATE "users" SET "auth_id" = gen_random_uuid()::text WHERE "auth_id" !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+            ALTER TABLE "users" ALTER COLUMN "auth_id" TYPE uuid USING "auth_id"::uuid;
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        -- Ensure unique constraint exists
         DO $$
         BEGIN
           IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_auth_id_unique') THEN

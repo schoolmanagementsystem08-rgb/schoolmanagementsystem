@@ -9,9 +9,9 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
+    "db:generate": "echo 'Migrations are auto-handled on startup via src/db/index.ts'",
+    "db:migrate": "echo 'Migrations are auto-handled on startup via src/db/index.ts'",
+    "db:push": "echo 'Migrations are auto-handled on startup via src/db/index.ts'",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

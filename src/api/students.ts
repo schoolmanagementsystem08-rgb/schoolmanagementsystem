@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import { db } from '../db';
 import { students, users, classes } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -72,7 +73,7 @@ router.post('/', async (req, res) => {
     const [user] = await db
       .insert(users)
       .values({
-        authId: `student_${Date.now()}`,
+        authId: randomUUID(),
         name,
         email,
         role: 'student',

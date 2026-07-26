@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { db } from '../db';
@@ -333,7 +334,7 @@ router.post('/', async (req, res) => {
     }
 
     const [createdUser] = await db.insert(users).values({
-      authId: `manual_${Date.now()}`,
+      authId: randomUUID(),
       name,
       email,
       role: 'teacher',

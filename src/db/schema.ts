@@ -1,8 +1,8 @@
-import { pgTable, serial, text, timestamp, integer, boolean, real, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, integer, boolean, real, jsonb, uuid } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  authId: text('auth_id').unique().notNull(),
+  authId: uuid('auth_id').unique().notNull(),
   name: text('name').notNull(),
   email: text('email').notNull(),
   role: text('role').notNull(), // superadmin, admin, teacher, student, parent
