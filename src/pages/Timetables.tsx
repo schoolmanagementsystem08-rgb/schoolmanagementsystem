@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, X, Clock, User, BookOpen, MapPin, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Clock, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../lib/api.ts';
 
 interface TimetableEntry {
@@ -23,8 +23,9 @@ interface TeacherOption {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-function toTime(str: string) {
+function toTime12(str: string) {
   if (!str) return '';
   const [h, m] = str.split(':');
   const hour = parseInt(h);
@@ -37,7 +38,7 @@ function timeToMinutes(t: string) {
   return h * 60 + m;
 }
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am - 6pm
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 7);
 
 export default function TimetablePage() {
   const [entries, setEntries] = useState<TimetableEntry[]>([]);
@@ -46,6 +47,7 @@ export default function TimetablePage() {
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState<string>('');
+  const [mobileDay, setMobileDay] = useState(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<TimetableEntry | null>(null);
   const [form, setForm] = useState({ classId: '', subjectId: '', teacherId: '', dayOfWeek: '0', startTime: '', endTime: '', room: '', term: '' });
@@ -75,8 +77,8 @@ export default function TimetablePage() {
   };
 
   const filtered = selectedClass ? entries.filter(e => e.classId === Number(selectedClass)) : entries;
-
   const filteredSubjects = subjects.filter(s => !form.classId || s.classId === Number(form.classId));
+  const mobileSlots = filtered.filter(e => e.dayOfWeek === mobileDay).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   const handleClassChange = (val: string) => {
     setForm({ ...form, classId: val, subjectId: '', teacherId: '' });
@@ -95,7 +97,7 @@ export default function TimetablePage() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ classId: '', subjectId: '', teacherId: '', dayOfWeek: '0', startTime: '', endTime: '', room: '', term: '' });
+    setForm({ classId: '', subjectId: '', teacherId: '', dayOfWeek: String(mobileDay), startTime: '', endTime: '', room: '', term: '' });
     setShowModal(true);
   };
 
@@ -134,20 +136,24 @@ export default function TimetablePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Timetable</h1>
-          <p className="text-neutral-500">Schedule classes, subjects, and time slots</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Timetable</h1>
+          <p className="text-sm sm:text-base text-neutral-500">Schedule classes, subjects, and time slots</p>
         </div>
-        <div className="flex items-center gap-3">
-          <select className="px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-            value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
-            <option value="">All Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <button onClick={openAdd} className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-xl font-medium hover:bg-neutral-800 transition-colors">
-            <Plus className="w-4 h-4" /> Add Slot
+        <div className="flex items-center gap-2 sm:gap-3">
+          {classes.length > 0 && (
+            <select className="px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5 max-w-[160px] sm:max-w-none"
+              value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
+              <option value="">All Classes</option>
+              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
+          <button onClick={openAdd} className="flex items-center gap-2 bg-black text-white px-3 sm:px-4 py-2 rounded-xl font-medium text-sm sm:text-base hover:bg-neutral-800 transition-colors shrink-0">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Add Slot</span>
+            <span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
@@ -157,73 +163,134 @@ export default function TimetablePage() {
       ) : filtered.length === 0 ? (
         <p className="text-center text-neutral-400 py-12">No timetable entries yet. Add a slot to get started.</p>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-2xl border border-neutral-200 shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-neutral-50">
-                <th className="px-3 py-3 text-left font-semibold text-neutral-500 min-w-[70px]">Time</th>
-                {DAYS.map((d, i) => (
-                  <th key={i} className="px-3 py-3 text-left font-semibold text-neutral-500 min-w-[140px]">{d}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {HOURS.map((hour) => (
-                <tr key={hour} className="hover:bg-neutral-50/50">
-                  <td className="px-3 py-2 text-xs font-mono text-neutral-400 align-top whitespace-nowrap">{toTime(`${hour}:00`)}</td>
-                  {DAYS.map((_, day) => {
-                    const slot = getSlot(day, hour);
-                    return (
-                      <td key={day} className="px-2 py-1 align-top border-l border-neutral-100">
-                        {slot ? (
-                          <div className="group relative bg-blue-50 rounded-lg p-2 border border-blue-100 hover:shadow-sm transition-all">
-                            <div className="flex items-start justify-between gap-1">
-                              <div className="min-w-0 flex-1">
-                                <p className="font-bold text-xs text-blue-800 truncate">{slot.subjectName}</p>
-                                <p className="text-[10px] text-blue-600 truncate">{slot.teacherName}</p>
-                                <div className="flex items-center gap-1 text-[10px] text-blue-500 mt-0.5">
-                                  <Clock className="w-3 h-3" />
-                                  {toTime(slot.startTime)} - {toTime(slot.endTime)}
-                                </div>
-                                {slot.room && (
+        <>
+          {/* Mobile day tabs */}
+          <div className="flex sm:hidden gap-1 overflow-x-auto pb-1">
+            {DAYS_SHORT.map((d, i) => (
+              <button key={i} onClick={() => setMobileDay(i)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${mobileDay === i ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}`}>
+                {d}
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile day navigation */}
+          <div className="flex sm:hidden items-center justify-between mb-2">
+            <button onClick={() => setMobileDay(d => d > 0 ? d - 1 : 6)} className="p-1.5 hover:bg-neutral-100 rounded-lg">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-bold text-sm">{DAYS[mobileDay]}</span>
+            <button onClick={() => setMobileDay(d => d < 6 ? d + 1 : 0)} className="p-1.5 hover:bg-neutral-100 rounded-lg">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Mobile card list */}
+          <div className="sm:hidden space-y-2">
+            {mobileSlots.length === 0 ? (
+              <p className="text-center text-neutral-400 py-8 text-sm">No classes scheduled for this day.</p>
+            ) : mobileSlots.map(slot => (
+              <div key={slot.id} className="bg-white rounded-xl border border-neutral-200 p-3 shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md">
+                        {toTime12(slot.startTime)}
+                      </span>
+                      <span className="text-xs text-neutral-400">-</span>
+                      <span className="text-xs font-mono text-neutral-400">{toTime12(slot.endTime)}</span>
+                    </div>
+                    <p className="font-bold text-sm mt-1">{slot.subjectName}</p>
+                    <p className="text-xs text-neutral-500">{slot.className} · {slot.teacherName}</p>
+                    {slot.room && (
+                      <p className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3" /> {slot.room}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={() => openEdit(slot)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-blue-600">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDelete(slot.id)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop full grid */}
+          <div className="hidden sm:block overflow-x-auto bg-white rounded-2xl border border-neutral-200 shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-neutral-50">
+                  <th className="px-3 py-3 text-left font-semibold text-neutral-500 min-w-[70px]">Time</th>
+                  {DAYS.map((d, i) => (
+                    <th key={i} className="px-3 py-3 text-left font-semibold text-neutral-500 min-w-[130px] lg:min-w-[150px]">{d}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {HOURS.map((hour) => (
+                  <tr key={hour} className="hover:bg-neutral-50/50">
+                    <td className="px-3 py-2 text-xs font-mono text-neutral-400 align-top whitespace-nowrap">{toTime12(`${hour}:00`)}</td>
+                    {DAYS.map((_, day) => {
+                      const slot = getSlot(day, hour);
+                      return (
+                        <td key={day} className="px-1.5 py-1 align-top border-l border-neutral-100">
+                          {slot ? (
+                            <div className="group relative bg-blue-50 rounded-lg p-1.5 lg:p-2 border border-blue-100 hover:shadow-sm transition-all">
+                              <div className="flex items-start justify-between gap-1">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-bold text-[11px] lg:text-xs text-blue-800 truncate">{slot.subjectName}</p>
+                                  <p className="text-[10px] text-blue-600 truncate hidden lg:block">{slot.teacherName}</p>
                                   <div className="flex items-center gap-1 text-[10px] text-blue-500 mt-0.5">
-                                    <MapPin className="w-3 h-3" />
-                                    {slot.room}
+                                    <Clock className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
+                                    <span className="hidden lg:inline">{toTime12(slot.startTime)}</span>
+                                    <span className="lg:hidden">{slot.startTime}</span>
+                                    <span className="hidden lg:inline"> - {toTime12(slot.endTime)}</span>
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                <button onClick={() => openEdit(slot)} className="p-1 hover:bg-blue-100 rounded text-blue-600">
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button onClick={() => handleDelete(slot.id)} className="p-1 hover:bg-red-100 rounded text-red-500">
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
+                                  {slot.room && (
+                                    <div className="hidden lg:flex items-center gap-1 text-[10px] text-blue-500 mt-0.5">
+                                      <MapPin className="w-3 h-3" /> {slot.room}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                  <button onClick={() => openEdit(slot)} className="p-0.5 lg:p-1 hover:bg-blue-100 rounded text-blue-600">
+                                    <Edit2 className="w-3 h-3" />
+                                  </button>
+                                  <button onClick={() => handleDelete(slot.id)} className="p-0.5 lg:p-1 hover:bg-red-100 rounded text-red-500">
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ) : null}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                          ) : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-              <h2 className="text-lg font-bold">{editing ? 'Edit Slot' : 'Add Timetable Slot'}</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-neutral-100 rounded-lg text-neutral-400">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-lg mx-0 sm:mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-neutral-100 sticky top-0 bg-white">
+              <h2 className="text-base sm:text-lg font-bold">{editing ? 'Edit Slot' : 'Add Timetable Slot'}</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-6 py-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-1">Class</label>
                   <select className="w-full px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
@@ -256,7 +323,7 @@ export default function TimetablePage() {
                   {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-1">Start Time</label>
                   <input type="time" className="w-full px-3 py-2 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
@@ -268,7 +335,7 @@ export default function TimetablePage() {
                     value={form.endTime} onChange={(e) => setForm({...form, endTime: e.target.value})} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-1">Room (optional)</label>
                   <input type="text" placeholder="e.g. Room 201" className="w-full px-3 py-2 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
@@ -281,7 +348,7 @@ export default function TimetablePage() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-100 bg-neutral-50">
+            <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-neutral-100 bg-neutral-50">
               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl">Cancel</button>
               <button onClick={handleSave} disabled={saving || !form.classId || !form.subjectId || !form.teacherId || !form.startTime || !form.endTime}
                 className="px-4 py-2 text-sm font-medium bg-black text-white rounded-xl hover:bg-neutral-800 disabled:opacity-50">
