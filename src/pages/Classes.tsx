@@ -99,7 +99,7 @@ export default function ClassesPage() {
       ) : classes.length === 0 ? (
         <p className="text-center text-neutral-400 py-12">No classes created yet.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {classes.map((item) => (
             <div key={item.id} className="bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm hover:shadow-md transition-all group">
               <div className="flex justify-between items-start mb-6">
