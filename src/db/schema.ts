@@ -30,9 +30,21 @@ export const students = pgTable('students', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').notNull(),
   classId: integer('class_id').notNull(),
+  studentId: text('student_id').unique(),
+  gender: text('gender'),
   enrollmentDate: timestamp('enrollment_date').defaultNow().notNull(),
   guardianId: integer('guardian_id'),
   status: text('status').default('Active').notNull(),
+});
+
+export const guardians = pgTable('guardians', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  phone: text('phone'),
+  email: text('email'),
+  address: text('address'),
+  relationship: text('relationship'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const subjects = pgTable('subjects', {

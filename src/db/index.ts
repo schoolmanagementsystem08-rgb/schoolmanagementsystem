@@ -25,7 +25,8 @@ export async function initializeDatabase() {
         );
         CREATE TABLE IF NOT EXISTS "schools" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "address" text, "admin_id" integer, "settings" jsonb);
         CREATE TABLE IF NOT EXISTS "classes" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "school_id" integer NOT NULL, "teacher_id" integer, "academic_year" text NOT NULL);
-        CREATE TABLE IF NOT EXISTS "students" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer NOT NULL, "class_id" integer NOT NULL, "enrollment_date" timestamp DEFAULT now() NOT NULL, "guardian_id" integer, "status" text DEFAULT 'Active' NOT NULL);
+        CREATE TABLE IF NOT EXISTS "students" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer NOT NULL, "class_id" integer NOT NULL, "student_id" text, "gender" text, "enrollment_date" timestamp DEFAULT now() NOT NULL, "guardian_id" integer, "status" text DEFAULT 'Active' NOT NULL);
+        CREATE TABLE IF NOT EXISTS "guardians" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "phone" text, "email" text, "address" text, "relationship" text, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "teachers" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer NOT NULL, "employee_id" text, "specialization" text, "phone" text, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "subjects" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "class_id" integer NOT NULL, "teacher_id" integer NOT NULL);
         CREATE TABLE IF NOT EXISTS "attendance" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "subject_id" integer, "date" timestamp NOT NULL, "status" text NOT NULL);
@@ -40,11 +41,19 @@ export async function initializeDatabase() {
       `);
 
       await client.query(`
-        -- Rename clerk_id -> auth_id if old column still exists
-        DO $$
-        BEGIN
+        DO $$ BEGIN
           IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='clerk_id') THEN
             ALTER TABLE "users" RENAME COLUMN "clerk_id" TO "auth_id";
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='student_id') THEN
+            ALTER TABLE "students" ADD COLUMN "student_id" text;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='gender') THEN
+            ALTER TABLE "students" ADD COLUMN "gender" text;
           END IF;
         END $$;
       `);
