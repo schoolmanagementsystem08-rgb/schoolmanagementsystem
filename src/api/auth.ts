@@ -39,7 +39,9 @@ router.post('/profile', async (req, res) => {
       return res.json({ user: updated });
     }
 
-    const role = authUser.user_metadata?.role || 'student';
+    const [anyUser] = await db.select({ id: users.id }).from(users).limit(1);
+    const isFirstUser = !anyUser;
+    const role = authUser.user_metadata?.role || (isFirstUser ? 'admin' : 'student');
     const displayName = name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
 
     const [created] = await db
@@ -93,7 +95,9 @@ router.get('/me', async (req, res) => {
 
     if (!profile) {
       console.log('[Auth /me] No profile found for clerkId:', authUser.id, '— auto-creating...');
-      const role = authUser.user_metadata?.role || 'student';
+      const [anyUser] = await db.select({ id: users.id }).from(users).limit(1);
+      const isFirstUser = !anyUser;
+      const role = authUser.user_metadata?.role || (isFirstUser ? 'admin' : 'student');
       const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
       const [created] = await db.insert(users).values({
         clerkId: authUser.id,
@@ -128,6 +132,24 @@ router.get('/me', async (req, res) => {
   } catch (error: any) {
     console.error('[Auth /me] Error:', error?.message);
     res.status(500).json({ error: error.message || 'Failed to fetch profile' });
+  }
+});
+
+router.post('/make-me-admin', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
+    const token = authHeader.split(' ')[1];
+    const { data: { user: authUser }, error } = await supabase.auth.getUser(token);
+    if (error || !authUser) return res.status(401).json({ error: 'Invalid token' });
+    const [profile] = await db.select().from(users).where(eq(users.clerkId, authUser.id)).limit(1);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    await db.update(users).set({ role: 'admin' }).where(eq(users.id, profile.id));
+    const [updated] = await db.select().from(users).where(eq(users.id, profile.id)).limit(1);
+    res.json({ user: updated, message: 'You are now an admin. Reload the page.' });
+  } catch (error: any) {
+    console.error('[Auth /make-me-admin] Error:', error?.message);
+    res.status(500).json({ error: 'Failed' });
   }
 });
 
