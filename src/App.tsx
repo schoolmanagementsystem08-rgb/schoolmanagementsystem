@@ -15,6 +15,13 @@ import AdminDashboard from './pages/AdminDashboard.tsx';
 import TeachersPage from './pages/Teachers.tsx';
 import RolesPage from './pages/Roles.tsx';
 import UsersPage from './pages/Users.tsx';
+import ExaminationsPage from './pages/Examinations.tsx';
+import TimetablesPage from './pages/Timetables.tsx';
+import HomeworkPage from './pages/Homework.tsx';
+import LibraryPage from './pages/Library.tsx';
+import InventoryPage from './pages/Inventory.tsx';
+import TransportPage from './pages/Transport.tsx';
+import PayrollPage from './pages/Payroll.tsx';
 
 import TeacherDashboard from './pages/TeacherDashboard.tsx';
 import TeacherClasses from './pages/TeacherClasses.tsx';
@@ -104,6 +111,10 @@ function AppRoutes() {
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
 
+        <Route path="/examinations" element={<ExaminationsPage />} />
+        <Route path="/timetables" element={<TimetablesPage />} />
+        <Route path="/homework" element={<HomeworkPage />} />
+
         {role === 'admin' && (
           <>
             <Route path="/students" element={<StudentsPage />} />
@@ -114,6 +125,10 @@ function AppRoutes() {
             <Route path="/fees" element={<FeesPage />} />
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/library" element={<LibraryPage />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/transport" element={<TransportPage />} />
+            <Route path="/payroll" element={<PayrollPage />} />
           </>
         )}
 
