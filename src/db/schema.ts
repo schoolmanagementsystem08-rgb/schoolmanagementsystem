@@ -2,7 +2,7 @@ import { pgTable, serial, text, timestamp, integer, boolean, real, jsonb } from 
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  clerkId: text('clerk_id').unique().notNull(),
+  authId: text('auth_id').unique().notNull(),
   name: text('name').notNull(),
   email: text('email').notNull(),
   role: text('role').notNull(), // superadmin, admin, teacher, student, parent

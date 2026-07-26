@@ -72,7 +72,7 @@ router.post('/', async (req, res) => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkId: `student_${Date.now()}`,
+        authId: `student_${Date.now()}`,
         name,
         email,
         role: 'student',

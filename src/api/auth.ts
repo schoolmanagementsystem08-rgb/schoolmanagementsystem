@@ -27,7 +27,7 @@ router.post('/profile', async (req, res) => {
     const [existing] = await db
       .select()
       .from(users)
-      .where(eq(users.clerkId, authUser.id))
+      .where(eq(users.authId, authUser.id))
       .limit(1);
 
     if (existing) {
@@ -47,7 +47,7 @@ router.post('/profile', async (req, res) => {
     const [created] = await db
       .insert(users)
       .values({
-        clerkId: authUser.id,
+        authId: authUser.id,
         name: displayName,
         email: authUser.email || '',
         role,
@@ -86,21 +86,21 @@ router.get('/me', async (req, res) => {
     }
     console.log('[Auth /me] Token verified, supabase user id:', authUser.id);
 
-    console.log('[Auth /me] Looking up user in DB by clerkId:', authUser.id);
+    console.log('[Auth /me] Looking up user in DB by authId:', authUser.id);
     const [profile] = await db
       .select()
       .from(users)
-      .where(eq(users.clerkId, authUser.id))
+      .where(eq(users.authId, authUser.id))
       .limit(1);
 
     if (!profile) {
-      console.log('[Auth /me] No profile found for clerkId:', authUser.id, '— auto-creating...');
+      console.log('[Auth /me] No profile found for authId:', authUser.id, '— auto-creating...');
       const [anyUser] = await db.select({ id: users.id }).from(users).limit(1);
       const isFirstUser = !anyUser;
       const role = authUser.user_metadata?.role || (isFirstUser ? 'admin' : 'student');
       const displayName = authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User';
       const [created] = await db.insert(users).values({
-        clerkId: authUser.id,
+        authId: authUser.id,
         name: displayName,
         email: authUser.email || '',
         role,
@@ -142,7 +142,7 @@ router.post('/make-me-admin', async (req, res) => {
     const token = authHeader.split(' ')[1];
     const { data: { user: authUser }, error } = await supabase.auth.getUser(token);
     if (error || !authUser) return res.status(401).json({ error: 'Invalid token' });
-    const [profile] = await db.select().from(users).where(eq(users.clerkId, authUser.id)).limit(1);
+    const [profile] = await db.select().from(users).where(eq(users.authId, authUser.id)).limit(1);
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
     await db.update(users).set({ role: 'admin' }).where(eq(users.id, profile.id));
     const [updated] = await db.select().from(users).where(eq(users.id, profile.id)).limit(1);

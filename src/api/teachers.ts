@@ -20,9 +20,9 @@ async function getTeacherIdFromAuth(authHeader: string | undefined) {
     console.error('[Teachers] Token verification failed:', error?.message);
     return null;
   }
-  const [user] = await db.select().from(users).where(eq(users.clerkId, authUser.id)).limit(1);
+  const [user] = await db.select().from(users).where(eq(users.authId, authUser.id)).limit(1);
   if (!user) {
-    console.log('[Teachers] No user found for clerkId:', authUser.id);
+    console.log('[Teachers] No user found for authId:', authUser.id);
     return null;
   }
   const [teacher] = await db.select().from(teachers).where(eq(teachers.userId, user.id)).limit(1);
@@ -45,9 +45,9 @@ router.get('/me', async (req, res) => {
       console.error('[Teachers /me] Token invalid:', error?.message);
       return res.status(401).json({ error: 'Invalid token' });
     }
-    const [user] = await db.select().from(users).where(eq(users.clerkId, authUser.id)).limit(1);
+    const [user] = await db.select().from(users).where(eq(users.authId, authUser.id)).limit(1);
     if (!user) {
-      console.log('[Teachers /me] No user for clerkId:', authUser.id);
+      console.log('[Teachers /me] No user for authId:', authUser.id);
       return res.status(404).json({ error: 'User not found' });
     }
     const [teacher] = await db
@@ -333,7 +333,7 @@ router.post('/', async (req, res) => {
     }
 
     const [createdUser] = await db.insert(users).values({
-      clerkId: `manual_${Date.now()}`,
+      authId: `manual_${Date.now()}`,
       name,
       email,
       role: 'teacher',

@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const { role, search } = req.query;
     let query = db.select({
       id: users.id,
-      clerkId: users.clerkId,
+      authId: users.authId,
       name: users.name,
       email: users.email,
       role: users.role,

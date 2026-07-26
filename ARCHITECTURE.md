@@ -176,23 +176,16 @@ const { data, error } = await supabase
 - Consistent data access patterns
 - Scalable for complex queries
 
-### 3. Clerk Authentication Middleware ✅
+### 3. Supabase Auth Integration ✅
 **Issue:** No authentication middleware was protecting API routes.
 
 **Solution:**
-- Created `src/middleware/auth.ts` with:
-  - `authenticate` - Required authentication for protected routes
-  - `optionalAuth` - Optional authentication for public routes
-  - Token verification using Clerk SDK
-  - Extended Express Request type with auth information
-- Applied authentication to student routes
-- Set up Clerk client initialization in `server.ts`
-
-**Benefits:**
-- Secure API endpoints
-- Role-based access control ready
-- Consistent authentication pattern
-- Easy to apply to new routes
+- Supabase Auth handles user registration & login (email/password)
+- Backend verifies tokens via `supabase.auth.getUser(token)` in each route
+- Roles (`admin`, `teacher`, `student`, `parent`) stored in custom `users` table
+- First signup automatically becomes `admin`
+- `/api/auth/me` endpoint returns user profile + role + teacher record
+- JWT token sent as `Authorization: Bearer <token>` header
 
 ### 4. Drizzle Migrations Setup ✅
 **Issue:** Database schema existed but no migration system was in place.
@@ -314,44 +307,25 @@ Required environment variables (see `.env.example`):
 - `NODE_ENV` - Environment (development/production/test)
 - `PORT` - Server port (default: 3000)
 - `DATABASE_URL` - SQLite database path (default: sqlite.db)
-- `CLERK_SECRET_KEY` - Clerk authentication secret key
-- `CLERK_PUBLISHABLE_KEY` - Clerk publishable key
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_ANON_KEY` - Supabase anonymous key
+- `DATABASE_URL` - Supabase PostgreSQL connection string (direct DB access)
 - `GEMINI_API_KEY` - Optional: Gemini AI API key
 
 ## Database Management
 
-### Generate Migration
-```bash
-npm run db:generate
-```
-
-### Run Migrations
-```bash
-npm run db:migrate
-```
-
-### Push Schema Changes (Development)
-```bash
-npm run db:push
-```
-
-### Open Drizzle Studio
-```bash
-npm run db:studio
-```
+Tables are auto-created on server startup via raw SQL with `CREATE TABLE IF NOT EXISTS`.
+To apply schema changes, modify `src/db/schema.ts` and update the CREATE statements in `src/db/index.ts`.
 
 ## API Authentication
 
-Protected routes require a Bearer token in the Authorization header:
+Protected routes require a Supabase JWT in the Authorization header:
 
 ```bash
-Authorization: Bearer <clerk_jwt_token>
+Authorization: Bearer <supabase_jwt_token>
 ```
 
-The authentication middleware:
-- Verifies the token with Clerk
-- Attaches user information to `req.auth`
-- Returns 401 for invalid/missing tokens
+The server verifies the token using `supabase.auth.getUser(token)` on each request and looks up the user profile in the custom `users` table via `authId`.
 
 ## Error Handling
 
