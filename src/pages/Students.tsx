@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, X, Eye, Phone, Mail, MapPin, User, DollarSign, BookOpen } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye, User, DollarSign } from 'lucide-react';
 import api from '../lib/api.ts';
+import { TableSkeleton } from '../components/Skeletons.tsx';
 
 interface Guardian {
   name: string; phone: string; email: string; address: string; relationship: string;
@@ -178,7 +179,7 @@ export default function StudentsPage() {
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {isLoading ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-neutral-400">Loading students...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-4"><TableSkeleton rows={5} cols={7} /></td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-neutral-400">
                   {search ? 'No students match your search.' : 'No students enrolled yet.'}

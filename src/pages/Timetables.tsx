@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Clock, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../lib/api.ts';
+import { confirmDelete, toastSuccess, toastError } from '../lib/alerts.ts';
+import { GridSkeleton } from '../components/Skeletons.tsx';
 
 interface TimetableEntry {
   id: number; classId: number; className: string;
@@ -135,11 +137,13 @@ export default function TimetablePage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Delete this timetable entry?')) return;
+    const result = await confirmDelete('timetable entry');
+    if (!result.isConfirmed) return;
     try {
       await api.delete(`/timetable/${id}`);
+      toastSuccess('Timetable entry deleted');
       await fetchAll();
-    } catch (err) { console.error(err); }
+    } catch (err) { toastError('Failed to delete'); console.error(err); }
   };
 
   return (
@@ -166,7 +170,7 @@ export default function TimetablePage() {
       </div>
 
       {loading ? (
-        <p className="text-center text-neutral-400 py-12">Loading timetable...</p>
+        <GridSkeleton rows={8} cols={7} />
       ) : filtered.length === 0 ? (
         <p className="text-center text-neutral-400 py-12">No timetable entries yet. Add a slot to get started.</p>
       ) : (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api.ts';
+import { confirmDelete, toastSuccess, toastError } from '../lib/alerts.ts';
 
 interface DeletedRecord {
   id: number;
@@ -38,12 +39,15 @@ export default function DeletedRecordsPage() {
   };
 
   const handlePurge = async () => {
-    if (!confirm('Purge all expired records now?')) return;
+    const result = await confirmDelete('all expired records');
+    if (!result.isConfirmed) return;
     try {
       await api.post('/deleted-records/purge');
+      toastSuccess('Expired records purged');
       fetchRecords();
     } catch (e: any) {
-      alert('Purge failed: ' + (e?.response?.data?.error || e?.message || 'Unknown error'));
+      toastError('Purge failed');
+      console.error(e);
     }
   };
 
