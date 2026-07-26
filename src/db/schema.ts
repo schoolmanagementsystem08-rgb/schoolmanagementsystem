@@ -159,6 +159,15 @@ export const messages = pgTable('messages', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const deletedRecords = pgTable('deleted_records', {
+  id: serial('id').primaryKey(),
+  tableName: text('table_name').notNull(),
+  recordId: integer('record_id').notNull(),
+  data: jsonb('data').notNull(),
+  deletedAt: timestamp('deleted_at').defaultNow().notNull(),
+  purgeAt: timestamp('purge_at').notNull(),
+});
+
 export const roles = pgTable('roles', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),

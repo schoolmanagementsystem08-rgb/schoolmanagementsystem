@@ -28,13 +28,19 @@ import {
   rolesRouter,
   adminUsersRouter,
   leaveRequestsRouter,
+  deletedRecordsRouter,
 } from './src/api';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler';
 import { initializeDatabase } from './src/db';
+import { purgeExpired } from './src/lib/soft-delete';
 
 async function startServer() {
   // Initialize database
   await initializeDatabase();
+
+  // Purge expired soft-deleted records on startup, then every 6 hours
+  await purgeExpired();
+  setInterval(async () => { await purgeExpired(); }, 6 * 60 * 60 * 1000);
 
   const app = express();
 
@@ -60,6 +66,7 @@ async function startServer() {
   app.use('/api/roles', rolesRouter);
   app.use('/api/admin/users', adminUsersRouter);
   app.use('/api/leave-requests', leaveRequestsRouter);
+  app.use('/api/deleted-records', deletedRecordsRouter);
 
   // AI endpoint
   app.post('/api/ai', async (req, res) => {

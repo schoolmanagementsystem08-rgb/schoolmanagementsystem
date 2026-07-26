@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { roles, users } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { softDelete } from '../lib/soft-delete';
 
 const router = Router();
 
@@ -89,8 +90,8 @@ router.delete('/:id', async (req, res) => {
     const [row] = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, existing.name));
     const userCount = Number(row.count);
     if (userCount > 0) return res.status(400).json({ error: `Cannot delete role: ${userCount} user(s) still have this role` });
-    await db.delete(roles).where(eq(roles.id, roleId));
-    res.json({ message: 'Role deleted' });
+    await softDelete('roles', roleId, { roleName: existing.name });
+    res.json({ message: 'Role deleted. Backup retained for 30 days.' });
   } catch (error: any) {
     console.error('[Roles] Error deleting:', error?.message);
     res.status(500).json({ error: 'Failed to delete role' });

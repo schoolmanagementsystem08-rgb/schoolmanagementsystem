@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { announcements } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { softDelete } from '../lib/soft-delete';
 
 const router = Router();
 
@@ -63,8 +64,8 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     const [existing] = await db.select().from(announcements).where(eq(announcements.id, Number(id))).limit(1);
     if (!existing) return res.status(404).json({ error: 'Announcement not found' });
-    await db.delete(announcements).where(eq(announcements.id, Number(id)));
-    res.json({ message: 'Announcement deleted successfully' });
+    await softDelete('announcements', Number(id));
+    res.json({ message: 'Announcement deleted. Backup retained for 30 days.' });
   } catch (error) {
     console.error('Error deleting announcement:', error);
     res.status(500).json({ error: 'Failed to delete announcement' });

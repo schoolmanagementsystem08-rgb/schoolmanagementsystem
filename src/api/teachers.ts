@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { db } from '../db';
 import { teachers, classes, subjects, students, users, attendance, grades, qualifications } from '../db/schema';
+import { softDelete } from '../lib/soft-delete';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
@@ -434,14 +435,14 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const teacherId = Number(req.params.id);
-    const [existing] = await db.select().from(teachers).where(eq(teachers.id, teacherId)).limit(1);
+    const [existing] = await db.select({ userId: teachers.userId, name: users.name, email: users.email }).from(teachers).leftJoin(users, eq(teachers.userId, users.id)).where(eq(teachers.id, teacherId)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Teacher not found' });
 
     await db.update(classes).set({ teacherId: null }).where(eq(classes.teacherId, teacherId));
-    await db.delete(teachers).where(eq(teachers.id, teacherId));
-    await db.delete(users).where(eq(users.id, existing.userId));
+    await softDelete('teachers', teacherId, { deletedUserName: existing.name, deletedUserEmail: existing.email });
+    await softDelete('users', existing.userId);
 
-    res.json({ message: 'Teacher deleted successfully' });
+    res.json({ message: 'Teacher deleted. Backup retained for 30 days.' });
   } catch (error: any) {
     console.error('[Teachers DELETE /:id] Error:', error?.message);
     res.status(500).json({ error: 'Failed to delete teacher' });

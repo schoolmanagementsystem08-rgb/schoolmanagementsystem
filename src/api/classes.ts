@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { classes, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { softDelete } from '../lib/soft-delete';
 
 const router = Router();
 
@@ -85,8 +86,8 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     const [existing] = await db.select().from(classes).where(eq(classes.id, Number(id))).limit(1);
     if (!existing) return res.status(404).json({ error: 'Class not found' });
-    await db.delete(classes).where(eq(classes.id, Number(id)));
-    res.json({ message: 'Class deleted successfully' });
+    await softDelete('classes', Number(id));
+    res.json({ message: 'Class deleted. Backup retained for 30 days.' });
   } catch (error) {
     console.error('Error deleting class:', error);
     res.status(500).json({ error: 'Failed to delete class' });

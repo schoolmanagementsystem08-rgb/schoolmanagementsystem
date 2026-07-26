@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { users } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { softDelete } from '../lib/soft-delete';
 
 const router = Router();
 
@@ -58,10 +59,10 @@ router.put('/:id/role', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const userId = Number(req.params.id);
-    const [existing] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const [existing] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
     if (!existing) return res.status(404).json({ error: 'User not found' });
-    await db.delete(users).where(eq(users.id, userId));
-    res.json({ message: 'User deleted' });
+    await softDelete('users', userId, { deletedUserName: existing.name, deletedUserEmail: existing.email });
+    res.json({ message: 'User deleted. Backup retained for 30 days.' });
   } catch (error: any) {
     console.error('[Admin Users] Error deleting:', error?.message);
     res.status(500).json({ error: 'Failed to delete user' });

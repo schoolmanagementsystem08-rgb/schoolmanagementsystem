@@ -40,6 +40,7 @@ export async function initializeDatabase() {
         CREATE TABLE IF NOT EXISTS "fees" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "amount" real NOT NULL, "due_date" timestamp NOT NULL, "status" text NOT NULL, "term" text NOT NULL);
         CREATE TABLE IF NOT EXISTS "messages" ("id" serial PRIMARY KEY NOT NULL, "sender_id" integer NOT NULL, "receiver_id" integer NOT NULL, "body" text NOT NULL, "read" boolean DEFAULT false, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "roles" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL UNIQUE, "description" text, "permissions" jsonb DEFAULT '{}' NOT NULL, "is_system" boolean DEFAULT false NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "deleted_records" ("id" serial PRIMARY KEY NOT NULL, "table_name" text NOT NULL, "record_id" integer NOT NULL, "data" jsonb NOT NULL, "deleted_at" timestamp DEFAULT now() NOT NULL, "purge_at" timestamp NOT NULL);
       `);
 
       await client.query(`

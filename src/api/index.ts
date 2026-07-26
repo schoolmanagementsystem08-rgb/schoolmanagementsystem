@@ -15,6 +15,7 @@ import statsRouter from './stats';
 import rolesRouter from './roles';
 import adminUsersRouter from './admin-users';
 import leaveRequestsRouter from './leave-requests';
+import deletedRecordsRouter from './deleted-records';
 
 export {
   healthRouter,
@@ -34,4 +35,5 @@ export {
   rolesRouter,
   adminUsersRouter,
   leaveRequestsRouter,
+  deletedRecordsRouter,
 };

@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { db } from '../db';
 import { students, users, classes, guardians, fees } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { softDelete } from '../lib/soft-delete';
 
 const router = Router();
 
@@ -227,11 +228,11 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const [existing] = await db.select({ userId: students.userId }).from(students).where(eq(students.id, Number(id))).limit(1);
+    const [existing] = await db.select({ userId: students.userId, name: users.name, email: users.email }).from(students).leftJoin(users, eq(students.userId, users.id)).where(eq(students.id, Number(id))).limit(1);
     if (!existing) return res.status(404).json({ error: 'Student not found' });
-    await db.delete(students).where(eq(students.id, Number(id)));
-    await db.delete(users).where(eq(users.id, existing.userId));
-    res.json({ message: 'Student deleted permanently' });
+    await softDelete('students', Number(id), { deletedUserName: existing.name, deletedUserEmail: existing.email });
+    await softDelete('users', existing.userId);
+    res.json({ message: 'Student deleted. Backup retained for 30 days.' });
   } catch (error) {
     console.error('Error deleting student:', error);
     res.status(500).json({ error: 'Failed to delete student' });
