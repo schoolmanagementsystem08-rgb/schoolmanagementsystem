@@ -29,6 +29,7 @@ import {
   adminUsersRouter,
   leaveRequestsRouter,
   deletedRecordsRouter,
+  timetableRouter,
 } from './src/api';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler';
 import { initializeDatabase } from './src/db';
@@ -67,6 +68,7 @@ async function startServer() {
   app.use('/api/admin/users', adminUsersRouter);
   app.use('/api/leave-requests', leaveRequestsRouter);
   app.use('/api/deleted-records', deletedRecordsRouter);
+  app.use('/api/timetable', timetableRouter);
 
   // AI endpoint
   app.post('/api/ai', async (req, res) => {

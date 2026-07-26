@@ -168,6 +168,19 @@ export const deletedRecords = pgTable('deleted_records', {
   purgeAt: timestamp('purge_at').notNull(),
 });
 
+export const timetable = pgTable('timetable', {
+  id: serial('id').primaryKey(),
+  classId: integer('class_id').notNull(),
+  subjectId: integer('subject_id').notNull(),
+  teacherId: integer('teacher_id').notNull(),
+  dayOfWeek: integer('day_of_week').notNull(), // 0=Mon..6=Sun
+  startTime: text('start_time').notNull(),     // HH:MM
+  endTime: text('end_time').notNull(),          // HH:MM
+  room: text('room'),
+  term: text('term'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const roles = pgTable('roles', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),

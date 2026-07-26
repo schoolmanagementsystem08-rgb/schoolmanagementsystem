@@ -16,6 +16,7 @@ import rolesRouter from './roles';
 import adminUsersRouter from './admin-users';
 import leaveRequestsRouter from './leave-requests';
 import deletedRecordsRouter from './deleted-records';
+import timetableRouter from './timetable';
 
 export {
   healthRouter,
@@ -36,4 +37,5 @@ export {
   adminUsersRouter,
   leaveRequestsRouter,
   deletedRecordsRouter,
+  timetableRouter,
 };
