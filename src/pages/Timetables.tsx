@@ -53,6 +53,13 @@ export default function TimetablePage() {
   const [form, setForm] = useState({ classId: '', subjectId: '', teacherId: '', dayOfWeek: '0', startTime: '', endTime: '', room: '', term: '' });
   const [saving, setSaving] = useState(false);
   const [teachersBySubject, setTeachersBySubject] = useState<Record<number, number>>({});
+  const [showQuickSubject, setShowQuickSubject] = useState(false);
+  const [quickSubjectName, setQuickSubjectName] = useState('');
+  const [quickSubjectTeacher, setQuickSubjectTeacher] = useState('');
+  const [savingQuickSubject, setSavingQuickSubject] = useState(false);
+  const [showQuickClass, setShowQuickClass] = useState(false);
+  const [quickClassName, setQuickClassName] = useState('');
+  const [savingQuickClass, setSavingQuickClass] = useState(false);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -293,19 +300,93 @@ export default function TimetablePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-1">Class</label>
-                  <select className="w-full px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-                    value={form.classId} onChange={(e) => handleClassChange(e.target.value)} disabled={!!editing}>
-                    <option value="">Select class...</option>
-                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <div className="flex gap-2">
+                    <select className="flex-1 px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
+                      value={form.classId} onChange={(e) => handleClassChange(e.target.value)} disabled={!!editing}>
+                      <option value="">Select class...</option>
+                      {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    {!editing && (
+                      <button type="button" onClick={() => { setShowQuickClass(true); setQuickClassName(''); }}
+                        className="px-3 py-2 border border-dashed border-neutral-300 rounded-xl text-neutral-400 hover:text-black hover:border-black transition-colors text-sm shrink-0">
+                        + New
+                      </button>
+                    )}
+                  </div>
+                  {showQuickClass && !editing && (
+                    <div className="mt-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
+                      <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Quick Create Class</p>
+                      <div className="flex items-center gap-2">
+                        <input type="text" placeholder="Class name (e.g. Grade 10A)" autoFocus
+                          className="flex-1 px-3 py-1.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
+                          value={quickClassName} onChange={(e) => setQuickClassName(e.target.value)} />
+                        <button onClick={async () => {
+                          if (!quickClassName.trim()) return;
+                          setSavingQuickClass(true);
+                          try {
+                            const res = await api.post('/classes', { name: quickClassName.trim(), academicYear: new Date().getFullYear().toString() });
+                            const newClass = res.data;
+                            setClasses(prev => [...prev, { id: newClass.id, name: newClass.name, academicYear: newClass.academicYear }]);
+                            setForm(f => ({ ...f, classId: String(newClass.id), subjectId: '', teacherId: '' }));
+                            setShowQuickClass(false);
+                          } catch (err) { console.error(err); }
+                          finally { setSavingQuickClass(false); }
+                        }} disabled={savingQuickClass || !quickClassName.trim()}
+                          className="px-3 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50 shrink-0">
+                          {savingQuickClass ? '...' : 'Create'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-1">Subject</label>
-                  <select className="w-full px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-                    value={form.subjectId} onChange={(e) => handleSubjectChange(e.target.value)}>
-                    <option value="">Select subject...</option>
-                    {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
+                  <div className="flex gap-2">
+                    <select className="flex-1 px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
+                      value={form.subjectId} onChange={(e) => handleSubjectChange(e.target.value)}>
+                      <option value="">Select subject...</option>
+                      {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => { setShowQuickSubject(true); setQuickSubjectName(''); setQuickSubjectTeacher(''); }}
+                      className="px-3 py-2 border border-dashed border-neutral-300 rounded-xl text-neutral-400 hover:text-black hover:border-black transition-colors text-sm shrink-0">
+                      + New
+                    </button>
+                  </div>
+                  {showQuickSubject && (
+                    <div className="mt-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
+                      <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Quick Create Subject</p>
+                      <input type="text" placeholder="Subject name" autoFocus
+                        className="w-full px-3 py-1.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
+                        value={quickSubjectName} onChange={(e) => setQuickSubjectName(e.target.value)} />
+                      <div className="flex items-center gap-2">
+                        <select className="flex-1 px-3 py-1.5 border border-neutral-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
+                          value={quickSubjectTeacher} onChange={(e) => setQuickSubjectTeacher(e.target.value)}>
+                          <option value="">Assign teacher (optional)</option>
+                          {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                        <button onClick={async () => {
+                          if (!quickSubjectName.trim() || !form.classId) return;
+                          setSavingQuickSubject(true);
+                          try {
+                            const res = await api.post('/subjects', {
+                              name: quickSubjectName.trim(),
+                              classId: Number(form.classId),
+                              teacherId: quickSubjectTeacher ? Number(quickSubjectTeacher) : null,
+                            });
+                            const newSub = res.data;
+                            setSubjects(prev => [...prev, { id: newSub.id, name: newSub.name, classId: newSub.classId }]);
+                            if (newSub.teacherId) setTeachersBySubject(prev => ({ ...prev, [newSub.id]: newSub.teacherId }));
+                            handleSubjectChange(String(newSub.id));
+                            setShowQuickSubject(false);
+                          } catch (err) { console.error(err); }
+                          finally { setSavingQuickSubject(false); }
+                        }} disabled={savingQuickSubject || !quickSubjectName.trim() || !form.classId}
+                          className="px-3 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-neutral-800 disabled:opacity-50 shrink-0">
+                          {savingQuickSubject ? '...' : 'Create'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div>
