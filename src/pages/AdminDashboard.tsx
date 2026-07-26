@@ -16,7 +16,7 @@ export default function AdminDashboard() {
       api.get('/announcements'),
     ]).then(([s, m, a]) => {
       setStats(s.data);
-      setMonthly(m.data);
+      setMonthly(Array.isArray(m.data) ? m.data : []);
       setAnnouncements(Array.isArray(a.data) ? a.data : []);
     }).catch(console.error)
     .finally(() => setLoading(false));
@@ -44,6 +44,7 @@ export default function AdminDashboard() {
     { label: 'Announcements', value: String(stats.announcements), sub: 'Posted', icon: Megaphone, color: 'bg-rose-50 text-rose-700', iconBg: 'bg-rose-100' },
   ];
 
+  const hasCharts = monthly.length > 0;
   const feeData = monthly.map(m => ({ month: m.month, Collected: m.feesCollected, Outstanding: m.feesOutstanding }));
   const studentData = monthly.map(m => ({ month: m.month, Students: m.students }));
   const attendanceData = monthly.map(m => ({ month: m.month, Rate: m.attendanceRate }));
@@ -85,47 +86,49 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
-          <h2 className="text-sm font-bold mb-3">Fees Collected vs Outstanding</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={feeData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip contentStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Collected" fill="#22c55e" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Outstanding" fill="#f97316" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      {hasCharts && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
+            <h2 className="text-sm font-bold mb-3">Fees Collected vs Outstanding</h2>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={feeData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip contentStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Collected" fill="#22c55e" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Outstanding" fill="#f97316" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
 
-        <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
-          <h2 className="text-sm font-bold mb-3">Students per Month</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={studentData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip contentStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Students" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+          <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
+            <h2 className="text-sm font-bold mb-3">Students per Month</h2>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={studentData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <Tooltip contentStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Students" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
 
-        <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
-          <h2 className="text-sm font-bold mb-3">Attendance Rate</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={attendanceData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
-              <Tooltip contentStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="Rate" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.15} strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
+            <h2 className="text-sm font-bold mb-3">Attendance Rate</h2>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={attendanceData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
+                <Tooltip contentStyle={{ fontSize: 11 }} />
+                <Area type="monotone" dataKey="Rate" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.15} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <h2 className="text-sm font-bold mb-3 flex items-center gap-2">

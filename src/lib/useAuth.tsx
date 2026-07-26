@@ -37,11 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       console.log('[Auth] Profile response:', res.status, res.data);
-      setProfile(res.data.user);
-      setRole(res.data.user.role);
-      setTeacher(res.data.teacher || null);
-      localStorage.setItem('role', res.data.user.role);
-      localStorage.setItem('userName', res.data.user.name);
+      const u = res.data?.user;
+      if (!u) {
+        console.warn('[Auth] Profile: user data missing');
+        setProfile(null); setRole(''); setTeacher(null);
+        return;
+      }
+      setProfile(u);
+      setRole(u.role || '');
+      setTeacher(res.data?.teacher || null);
+      localStorage.setItem('role', u.role || '');
+      localStorage.setItem('userName', u.name || '');
     } catch (err: any) {
       console.error('[Auth] Failed to fetch profile:', err?.response?.status, err?.response?.data || err.message);
       console.error('[Auth] Request URL:', `${api.defaults.baseURL}/auth/me`);
@@ -62,11 +68,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           headers: { Authorization: `Bearer ${session.access_token}` },
         }).then(res => {
           console.log('[Auth] Init profile response:', res.status);
-          setProfile(res.data.user);
-          setRole(res.data.user.role);
-          setTeacher(res.data.teacher || null);
-          localStorage.setItem('role', res.data.user.role);
-          localStorage.setItem('userName', res.data.user.name);
+          const u = res.data?.user;
+          if (!u) {
+            console.warn('[Auth] Init profile: user data missing in response');
+            setProfile(null); setRole(''); setTeacher(null);
+            return;
+          }
+          setProfile(u);
+          setRole(u.role || '');
+          setTeacher(res.data?.teacher || null);
+          localStorage.setItem('role', u.role || '');
+          localStorage.setItem('userName', u.name || '');
         }).catch((err: any) => {
           console.error('[Auth] Init profile failed:', err?.response?.status, err?.response?.data || err.message);
           console.error('[Auth] Init request URL:', url);
