@@ -83,6 +83,10 @@ router.post('/', async (req, res) => {
     if (classId == null || subjectId == null || teacherId == null || dayOfWeek == null || !startTime || !endTime) {
       return res.status(400).json({ error: 'classId, subjectId, teacherId, dayOfWeek, startTime, endTime are required' });
     }
+    const [subject] = await db.select({ classId: subjects.classId, teacherId: subjects.teacherId }).from(subjects).where(eq(subjects.id, subjectId)).limit(1);
+    if (!subject) return res.status(400).json({ error: 'Subject not found' });
+    if (subject.classId !== classId) return res.status(400).json({ error: 'Subject does not belong to the selected class' });
+    if (subject.teacherId && subject.teacherId !== teacherId) return res.status(400).json({ error: 'Teacher does not match the subject\'s assigned teacher' });
     const [created] = await db.insert(timetable).values({ classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room, term }).returning();
     res.status(201).json(created);
   } catch (error: any) {
@@ -97,6 +101,14 @@ router.put('/:id', async (req, res) => {
     const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room, term } = req.body;
     const [existing] = await db.select().from(timetable).where(eq(timetable.id, Number(id))).limit(1);
     if (!existing) return res.status(404).json({ error: 'Timetable entry not found' });
+
+    const effClassId = classId ?? existing.classId;
+    const effSubjectId = subjectId ?? existing.subjectId;
+    const effTeacherId = teacherId ?? existing.teacherId;
+    const [subject] = await db.select({ cid: subjects.classId, tid: subjects.teacherId }).from(subjects).where(eq(subjects.id, effSubjectId)).limit(1);
+    if (!subject) return res.status(400).json({ error: 'Subject not found' });
+    if (subject.cid !== effClassId) return res.status(400).json({ error: 'Subject does not belong to the selected class' });
+    if (subject.tid && subject.tid !== effTeacherId) return res.status(400).json({ error: 'Teacher does not match the subject\'s assigned teacher' });
 
     await db.update(timetable).set({
       ...(classId != null && { classId }),

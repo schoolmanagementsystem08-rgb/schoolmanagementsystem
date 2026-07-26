@@ -50,6 +50,7 @@ export default function TimetablePage() {
   const [editing, setEditing] = useState<TimetableEntry | null>(null);
   const [form, setForm] = useState({ classId: '', subjectId: '', teacherId: '', dayOfWeek: '0', startTime: '', endTime: '', room: '', term: '' });
   const [saving, setSaving] = useState(false);
+  const [teachersBySubject, setTeachersBySubject] = useState<Record<number, number>>({});
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -63,13 +64,28 @@ export default function TimetablePage() {
       ]);
       setEntries(Array.isArray(eRes.data) ? eRes.data : []);
       setClasses(Array.isArray(cRes.data) ? cRes.data : []);
-      setSubjects(Array.isArray(sRes.data) ? sRes.data : []);
+      const subs: SubjectOption[] = Array.isArray(sRes.data) ? sRes.data : [];
+      setSubjects(subs);
+      const tMap: Record<number, number> = {};
+      subs.forEach((s: any) => { if (s.teacherId) tMap[s.id] = s.teacherId; });
+      setTeachersBySubject(tMap);
       setTeachers(Array.isArray(tRes.data) ? tRes.data.map((t: any) => ({ id: t.id, name: t.name })) : []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
   const filtered = selectedClass ? entries.filter(e => e.classId === Number(selectedClass)) : entries;
+
+  const filteredSubjects = subjects.filter(s => !form.classId || s.classId === Number(form.classId));
+
+  const handleClassChange = (val: string) => {
+    setForm({ ...form, classId: val, subjectId: '', teacherId: '' });
+  };
+
+  const handleSubjectChange = (val: string) => {
+    const tid = val ? teachersBySubject[Number(val)] : null;
+    setForm({ ...form, subjectId: val, teacherId: tid ? String(tid) : '' });
+  };
 
   const getSlot = (day: number, hour: number) => {
     const start = hour * 60;
@@ -211,7 +227,7 @@ export default function TimetablePage() {
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-1">Class</label>
                   <select className="w-full px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-                    value={form.classId} onChange={(e) => setForm({...form, classId: e.target.value})}>
+                    value={form.classId} onChange={(e) => handleClassChange(e.target.value)} disabled={!!editing}>
                     <option value="">Select class...</option>
                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -219,9 +235,9 @@ export default function TimetablePage() {
                 <div>
                   <label className="block text-sm font-semibold text-neutral-700 mb-1">Subject</label>
                   <select className="w-full px-3 py-2 border border-neutral-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-                    value={form.subjectId} onChange={(e) => setForm({...form, subjectId: e.target.value})}>
+                    value={form.subjectId} onChange={(e) => handleSubjectChange(e.target.value)}>
                     <option value="">Select subject...</option>
-                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
               </div>
