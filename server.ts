@@ -27,6 +27,7 @@ import {
   statsRouter,
   rolesRouter,
   adminUsersRouter,
+  leaveRequestsRouter,
 } from './src/api';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler';
 import { initializeDatabase } from './src/db';
@@ -58,6 +59,7 @@ async function startServer() {
   app.use('/api/stats', statsRouter);
   app.use('/api/roles', rolesRouter);
   app.use('/api/admin/users', adminUsersRouter);
+  app.use('/api/leave-requests', leaveRequestsRouter);
 
   // AI endpoint
   app.post('/api/ai', async (req, res) => {

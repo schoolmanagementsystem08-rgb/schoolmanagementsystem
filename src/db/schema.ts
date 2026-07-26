@@ -51,7 +51,7 @@ export const subjects = pgTable('subjects', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   classId: integer('class_id').notNull(),
-  teacherId: integer('teacher_id').notNull(),
+  teacherId: integer('teacher_id'),
 });
 
 export const attendance = pgTable('attendance', {
@@ -96,6 +96,30 @@ export const teachers = pgTable('teachers', {
   employeeId: text('employee_id'),
   specialization: text('specialization'),
   phone: text('phone'),
+  status: text('status').default('Active').notNull(),
+  portalAccess: text('portal_access').default('full').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const qualifications = pgTable('qualifications', {
+  id: serial('id').primaryKey(),
+  teacherId: integer('teacher_id').notNull(),
+  degree: text('degree').notNull(),
+  institution: text('institution').notNull(),
+  field: text('field'),
+  year: text('year'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const leaveRequests = pgTable('leave_requests', {
+  id: serial('id').primaryKey(),
+  teacherId: integer('teacher_id').notNull(),
+  type: text('type').notNull(),
+  reason: text('reason').notNull(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  status: text('status').default('Pending').notNull(),
+  adminNote: text('admin_note'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

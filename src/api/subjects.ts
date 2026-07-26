@@ -1,16 +1,74 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { subjects } from '../db/schema';
+import { subjects, classes } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 
 router.get('/', async (req, res) => {
   try {
-    const all = await db.select().from(subjects);
+    const all = await db
+      .select({
+        id: subjects.id,
+        name: subjects.name,
+        classId: subjects.classId,
+        className: classes.name,
+        teacherId: subjects.teacherId,
+      })
+      .from(subjects)
+      .leftJoin(classes, eq(subjects.classId, classes.id));
     res.json(all);
   } catch (error) {
     console.error('Error fetching subjects:', error);
     res.status(500).json({ error: 'Failed to fetch subjects' });
+  }
+});
+
+router.post('/', async (req, res) => {
+  try {
+    const { name, classId, teacherId } = req.body;
+    if (!name || !classId) return res.status(400).json({ error: 'Name and class are required' });
+    const [created] = await db.insert(subjects).values({
+      name,
+      classId: Number(classId),
+      teacherId: teacherId ? Number(teacherId) : null,
+    }).returning();
+    res.status(201).json(created);
+  } catch (error) {
+    console.error('Error creating subject:', error);
+    res.status(500).json({ error: 'Failed to create subject' });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, classId, teacherId } = req.body;
+    const [existing] = await db.select().from(subjects).where(eq(subjects.id, Number(id))).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Subject not found' });
+    const updateData: any = {};
+    if (name) updateData.name = name;
+    if (classId) updateData.classId = Number(classId);
+    if (teacherId !== undefined) updateData.teacherId = teacherId ? Number(teacherId) : null;
+    await db.update(subjects).set(updateData).where(eq(subjects.id, Number(id)));
+    const [updated] = await db.select().from(subjects).where(eq(subjects.id, Number(id))).limit(1);
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating subject:', error);
+    res.status(500).json({ error: 'Failed to update subject' });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [existing] = await db.select().from(subjects).where(eq(subjects.id, Number(id))).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Subject not found' });
+    await db.delete(subjects).where(eq(subjects.id, Number(id)));
+    res.json({ message: 'Subject deleted' });
+  } catch (error) {
+    console.error('Error deleting subject:', error);
+    res.status(500).json({ error: 'Failed to delete subject' });
   }
 });
 

@@ -27,8 +27,10 @@ export async function initializeDatabase() {
         CREATE TABLE IF NOT EXISTS "classes" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "school_id" integer NOT NULL, "teacher_id" integer, "academic_year" text NOT NULL);
         CREATE TABLE IF NOT EXISTS "students" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer NOT NULL, "class_id" integer NOT NULL, "student_id" text, "gender" text, "enrollment_date" timestamp DEFAULT now() NOT NULL, "guardian_id" integer, "status" text DEFAULT 'Active' NOT NULL);
         CREATE TABLE IF NOT EXISTS "guardians" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "phone" text, "email" text, "address" text, "relationship" text, "created_at" timestamp DEFAULT now() NOT NULL);
-        CREATE TABLE IF NOT EXISTS "teachers" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer NOT NULL, "employee_id" text, "specialization" text, "phone" text, "created_at" timestamp DEFAULT now() NOT NULL);
-        CREATE TABLE IF NOT EXISTS "subjects" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "class_id" integer NOT NULL, "teacher_id" integer NOT NULL);
+        CREATE TABLE IF NOT EXISTS "teachers" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer NOT NULL, "employee_id" text, "specialization" text, "phone" text, "status" text DEFAULT 'Active' NOT NULL, "portal_access" text DEFAULT 'full' NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
+        CREATE TABLE IF NOT EXISTS "qualifications" ("id" serial PRIMARY KEY NOT NULL, "teacher_id" integer NOT NULL, "degree" text NOT NULL, "institution" text NOT NULL, "field" text, "year" text, "created_at" timestamp DEFAULT now() NOT NULL);
+        CREATE TABLE IF NOT EXISTS "leave_requests" ("id" serial PRIMARY KEY NOT NULL, "teacher_id" integer NOT NULL, "type" text NOT NULL, "reason" text NOT NULL, "start_date" timestamp NOT NULL, "end_date" timestamp NOT NULL, "status" text DEFAULT 'Pending' NOT NULL, "admin_note" text, "created_at" timestamp DEFAULT now() NOT NULL);
+        CREATE TABLE IF NOT EXISTS "subjects" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "class_id" integer NOT NULL, "teacher_id" integer);
         CREATE TABLE IF NOT EXISTS "attendance" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "subject_id" integer, "date" timestamp NOT NULL, "status" text NOT NULL);
         CREATE TABLE IF NOT EXISTS "grades" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "subject_id" integer NOT NULL, "score" real NOT NULL, "max_score" real NOT NULL, "term" text NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "assignments" ("id" serial PRIMARY KEY NOT NULL, "title" text NOT NULL, "subject_id" integer NOT NULL, "due_date" timestamp NOT NULL, "description" text, "attachment_url" text);
@@ -54,6 +56,16 @@ export async function initializeDatabase() {
         DO $$ BEGIN
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='gender') THEN
             ALTER TABLE "students" ADD COLUMN "gender" text;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teachers' AND column_name='status') THEN
+            ALTER TABLE "teachers" ADD COLUMN "status" text DEFAULT 'Active';
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teachers' AND column_name='portal_access') THEN
+            ALTER TABLE "teachers" ADD COLUMN "portal_access" text DEFAULT 'full';
           END IF;
         END $$;
       `);

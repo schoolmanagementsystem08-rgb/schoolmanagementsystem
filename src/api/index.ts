@@ -14,6 +14,7 @@ import authRouter from './auth';
 import statsRouter from './stats';
 import rolesRouter from './roles';
 import adminUsersRouter from './admin-users';
+import leaveRequestsRouter from './leave-requests';
 
 export {
   healthRouter,
@@ -32,4 +33,5 @@ export {
   statsRouter,
   rolesRouter,
   adminUsersRouter,
+  leaveRequestsRouter,
 };

@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { db } from '../db';
-import { teachers, classes, subjects, students, users, attendance, grades } from '../db/schema';
+import { teachers, classes, subjects, students, users, attendance, grades, qualifications } from '../db/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
@@ -295,6 +295,8 @@ router.get('/', async (req, res) => {
         employeeId: teachers.employeeId,
         specialization: teachers.specialization,
         phone: teachers.phone,
+        status: teachers.status,
+        portalAccess: teachers.portalAccess,
         createdAt: teachers.createdAt,
       })
       .from(teachers)
@@ -368,7 +370,7 @@ router.put('/:id', async (req, res) => {
     const [existing] = await db.select().from(teachers).where(eq(teachers.id, teacherId)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Teacher not found' });
 
-    const { name, email, specialization, phone, employeeId } = req.body;
+    const { name, email, specialization, phone, employeeId, status, portalAccess, qualification } = req.body;
 
     if (name || email) {
       await db.update(users).set({
@@ -381,7 +383,29 @@ router.put('/:id', async (req, res) => {
       ...(specialization !== undefined && { specialization }),
       ...(phone !== undefined && { phone }),
       ...(employeeId !== undefined && { employeeId }),
+      ...(status !== undefined && { status }),
+      ...(portalAccess !== undefined && { portalAccess }),
     }).where(eq(teachers.id, teacherId));
+
+    if (qualification?.degree) {
+      const [qual] = await db.select().from(qualifications).where(eq(qualifications.teacherId, teacherId)).limit(1);
+      if (qual) {
+        await db.update(qualifications).set({
+          degree: qualification.degree,
+          institution: qualification.institution,
+          field: qualification.field || null,
+          year: qualification.year || null,
+        }).where(eq(qualifications.id, qual.id));
+      } else {
+        await db.insert(qualifications).values({
+          teacherId,
+          degree: qualification.degree,
+          institution: qualification.institution,
+          field: qualification.field || null,
+          year: qualification.year || null,
+        });
+      }
+    }
 
     const [updated] = await db
       .select({
@@ -392,6 +416,8 @@ router.put('/:id', async (req, res) => {
         employeeId: teachers.employeeId,
         specialization: teachers.specialization,
         phone: teachers.phone,
+        status: teachers.status,
+        portalAccess: teachers.portalAccess,
       })
       .from(teachers)
       .leftJoin(users, eq(teachers.userId, users.id))
