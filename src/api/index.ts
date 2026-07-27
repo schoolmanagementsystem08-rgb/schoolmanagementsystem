@@ -18,6 +18,7 @@ import leaveRequestsRouter from './leave-requests';
 import deletedRecordsRouter from './deleted-records';
 import timetableRouter from './timetable';
 import scholarshipsRouter from './scholarships';
+import logsRouter from './logs';
 
 export {
   healthRouter,
@@ -40,4 +41,5 @@ export {
   deletedRecordsRouter,
   timetableRouter,
   scholarshipsRouter,
+  logsRouter,
 };

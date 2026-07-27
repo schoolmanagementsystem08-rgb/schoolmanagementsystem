@@ -24,6 +24,9 @@ import TransportPage from './pages/Transport.tsx';
 import PayrollPage from './pages/Payroll.tsx';
 import DeletedRecordsPage from './pages/DeletedRecords.tsx';
 import ScholarshipsPage from './pages/Scholarships.tsx';
+import SystemLogsPage from './pages/SystemLogs.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
+import { usePageTracking } from './lib/useActivityLog.ts';
 
 import TeacherDashboard from './pages/TeacherDashboard.tsx';
 import TeacherClasses from './pages/TeacherClasses.tsx';
@@ -105,8 +108,11 @@ function AppRoutes() {
 
   const isTeacher = role === 'teacher';
 
+  usePageTracking();
+
   return (
     <DashboardLayout userRole={role}>
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={isTeacher ? <TeacherDashboard /> : <AdminDashboard />} />
         <Route path="/announcements" element={<AnnouncementsPage />} />
@@ -133,6 +139,7 @@ function AppRoutes() {
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/deleted-records" element={<DeletedRecordsPage />} />
             <Route path="/scholarships" element={<ScholarshipsPage />} />
+            <Route path="/system-logs" element={<SystemLogsPage />} />
           </>
         )}
 
@@ -149,6 +156,7 @@ function AppRoutes() {
         <Route path="/signup" element={<Navigate to="/" />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      </ErrorBoundary>
     </DashboardLayout>
   );
 }

@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, BookOpen, Calendar, GraduationCap, FileText,
   CreditCard, Bell, MessageSquare, Settings, Menu, LogOut, ChevronRight,
   ClipboardList, Shield, Bus, Truck, Library, PiggyBank, Timer, PencilLine,
-  Archive, Award,
+  Archive, Award, Activity, AlertTriangle,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,6 +69,7 @@ const sidebarSections: SidebarSection[] = [
       { icon: Shield, label: 'Roles', href: '/roles', roles: ['admin'] },
       { icon: Users, label: 'Users', href: '/users', roles: ['admin'] },
       { icon: Archive, label: 'Deleted Records', href: '/deleted-records', roles: ['admin'] },
+      { icon: Activity, label: 'System Logs', href: '/system-logs', roles: ['admin'] },
       { icon: Bell, label: 'Announcements', href: '/announcements', roles: ['admin', 'teacher', 'student', 'parent'] },
       { icon: MessageSquare, label: 'Messages', href: '/messages', roles: ['admin', 'teacher', 'student', 'parent'] },
       { icon: Settings, label: 'Settings', href: '/settings', roles: ['admin', 'teacher'] },

@@ -31,10 +31,12 @@ import {
   deletedRecordsRouter,
   timetableRouter,
   scholarshipsRouter,
+  logsRouter,
 } from './src/api';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler';
 import { initializeDatabase } from './src/db';
 import { purgeExpired } from './src/lib/soft-delete';
+import { logActivity } from './src/lib/activity-logger';
 
 async function startServer() {
   // Initialize database
@@ -49,6 +51,26 @@ async function startServer() {
   // Middleware
   app.use(cors());
   app.use(express.json());
+
+  // Request logging — log every API call
+  app.use('/api', (req, res, next) => {
+    const start = Date.now();
+    const originalEnd = res.end;
+    res.end = function (this: any, ...args: any[]) {
+      const duration = Date.now() - start;
+      if (req.method !== 'GET' || res.statusCode >= 400) {
+        logActivity({
+          action: req.method === 'GET' ? 'read' : req.method === 'POST' ? 'create' : req.method === 'PUT' ? 'update' : req.method === 'DELETE' ? 'delete' : req.method.toLowerCase(),
+          path: req.originalUrl,
+          method: req.method,
+          details: { statusCode: res.statusCode, duration: `${duration}ms` },
+          req,
+        });
+      }
+      return originalEnd.apply(this, args as any);
+    };
+    next();
+  });
 
   // API Routes (must come before Vite SPA fallback)
   app.use('/api/health', healthRouter);
@@ -71,6 +93,7 @@ async function startServer() {
   app.use('/api/deleted-records', deletedRecordsRouter);
   app.use('/api/timetable', timetableRouter);
   app.use('/api/scholarships', scholarshipsRouter);
+  app.use('/api/logs', logsRouter);
 
   // AI endpoint
   app.post('/api/ai', async (req, res) => {

@@ -43,6 +43,8 @@ export async function initializeDatabase() {
 CREATE TABLE IF NOT EXISTS "deleted_records" ("id" serial PRIMARY KEY NOT NULL, "table_name" text NOT NULL, "record_id" integer NOT NULL, "data" jsonb NOT NULL, "deleted_at" timestamp DEFAULT now() NOT NULL, "purge_at" timestamp NOT NULL);
 CREATE TABLE IF NOT EXISTS "timetable" ("id" serial PRIMARY KEY NOT NULL, "class_id" integer NOT NULL, "subject_id" integer NOT NULL, "teacher_id" integer NOT NULL, "day_of_week" integer NOT NULL, "start_time" text NOT NULL, "end_time" text NOT NULL, "room" text, "term" text, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "scholarships" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "scholarship_name" text NOT NULL, "type" text NOT NULL, "discount_percentage" real NOT NULL, "amount" real, "start_date" timestamp NOT NULL, "end_date" timestamp, "status" text DEFAULT 'Active' NOT NULL, "notes" text, "approved_by" integer, "created_at" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "activity_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer, "user_name" text, "user_role" text, "action" text NOT NULL, "entity" text, "entity_id" integer, "details" jsonb, "ip_address" text, "user_agent" text, "path" text, "method" text, "timestamp" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "error_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer, "user_name" text, "level" text DEFAULT 'error' NOT NULL, "message" text NOT NULL, "stack" text, "context" jsonb, "ip_address" text, "url" text, "timestamp" timestamp DEFAULT now() NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_fees_student_id ON fees (student_id);
 CREATE INDEX IF NOT EXISTS idx_students_class_id ON students (class_id);
@@ -56,6 +58,10 @@ CREATE INDEX IF NOT EXISTS idx_subjects_teacher_id ON subjects (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_student_id ON attendance (student_id);
 CREATE INDEX IF NOT EXISTS idx_grades_student_id ON grades (student_id);
 CREATE INDEX IF NOT EXISTS idx_scholarships_student_id ON scholarships (student_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs (timestamp);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs (user_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs (action);
+CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs (timestamp);
       `);
 
       await client.query(`
@@ -131,6 +137,8 @@ CREATE INDEX IF NOT EXISTS idx_scholarships_student_id ON scholarships (student_
         ALTER TABLE IF EXISTS "timetable" ENABLE ROW LEVEL SECURITY;
         ALTER TABLE IF EXISTS "deleted_records" ENABLE ROW LEVEL SECURITY;
         ALTER TABLE IF EXISTS "scholarships" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS "activity_logs" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS "error_logs" ENABLE ROW LEVEL SECURITY;
 
         -- Drop existing policies to make this idempotent
         DROP POLICY IF EXISTS "users_select_policy" ON "users";
@@ -338,6 +346,16 @@ CREATE INDEX IF NOT EXISTS idx_scholarships_student_id ON scholarships (student_
         CREATE POLICY "scholarships_insert_policy" ON "scholarships" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
         CREATE POLICY "scholarships_update_policy" ON "scholarships" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
         CREATE POLICY "scholarships_delete_policy" ON "scholarships" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        DROP POLICY IF EXISTS "activity_logs_select_policy" ON "activity_logs";
+        DROP POLICY IF EXISTS "activity_logs_insert_policy" ON "activity_logs";
+        DROP POLICY IF EXISTS "error_logs_select_policy" ON "error_logs";
+        DROP POLICY IF EXISTS "error_logs_insert_policy" ON "error_logs";
+
+        CREATE POLICY "activity_logs_select_policy" ON "activity_logs" FOR SELECT USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "activity_logs_insert_policy" ON "activity_logs" FOR INSERT WITH CHECK (true);
+        CREATE POLICY "error_logs_select_policy" ON "error_logs" FOR SELECT USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "error_logs_insert_policy" ON "error_logs" FOR INSERT WITH CHECK (true);
       `);
 
       console.log('✅ Database tables ready');

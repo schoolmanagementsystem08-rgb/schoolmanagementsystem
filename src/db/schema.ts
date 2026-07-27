@@ -181,6 +181,35 @@ export const timetable = pgTable('timetable', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const activityLogs = pgTable('activity_logs', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id'),
+  userName: text('user_name'),
+  userRole: text('user_role'),
+  action: text('action').notNull(),
+  entity: text('entity'),
+  entityId: integer('entity_id'),
+  details: jsonb('details'),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  path: text('path'),
+  method: text('method'),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+});
+
+export const errorLogs = pgTable('error_logs', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id'),
+  userName: text('user_name'),
+  level: text('level').default('error').notNull(),
+  message: text('message').notNull(),
+  stack: text('stack'),
+  context: jsonb('context'),
+  ipAddress: text('ip_address'),
+  url: text('url'),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+});
+
 export const scholarships = pgTable('scholarships', {
   id: serial('id').primaryKey(),
   studentId: integer('student_id').notNull(),
