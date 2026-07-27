@@ -42,6 +42,18 @@ export async function initializeDatabase() {
         CREATE TABLE IF NOT EXISTS "roles" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL UNIQUE, "description" text, "permissions" jsonb DEFAULT '{}' NOT NULL, "is_system" boolean DEFAULT false NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "deleted_records" ("id" serial PRIMARY KEY NOT NULL, "table_name" text NOT NULL, "record_id" integer NOT NULL, "data" jsonb NOT NULL, "deleted_at" timestamp DEFAULT now() NOT NULL, "purge_at" timestamp NOT NULL);
 CREATE TABLE IF NOT EXISTS "timetable" ("id" serial PRIMARY KEY NOT NULL, "class_id" integer NOT NULL, "subject_id" integer NOT NULL, "teacher_id" integer NOT NULL, "day_of_week" integer NOT NULL, "start_time" text NOT NULL, "end_time" text NOT NULL, "room" text, "term" text, "created_at" timestamp DEFAULT now() NOT NULL);
+
+CREATE INDEX IF NOT EXISTS idx_fees_student_id ON fees (student_id);
+CREATE INDEX IF NOT EXISTS idx_students_class_id ON students (class_id);
+CREATE INDEX IF NOT EXISTS idx_students_user_id ON students (user_id);
+CREATE INDEX IF NOT EXISTS idx_teachers_user_id ON teachers (user_id);
+CREATE INDEX IF NOT EXISTS idx_timetable_class_id ON timetable (class_id);
+CREATE INDEX IF NOT EXISTS idx_timetable_teacher_id ON timetable (teacher_id);
+CREATE INDEX IF NOT EXISTS idx_timetable_day_of_week ON timetable (day_of_week);
+CREATE INDEX IF NOT EXISTS idx_classes_teacher_id ON classes (teacher_id);
+CREATE INDEX IF NOT EXISTS idx_subjects_teacher_id ON subjects (teacher_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_student_id ON attendance (student_id);
+CREATE INDEX IF NOT EXISTS idx_grades_student_id ON grades (student_id);
       `);
 
       await client.query(`

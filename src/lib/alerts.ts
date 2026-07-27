@@ -12,7 +12,6 @@ export function confirmDelete(entity: string) {
     cancelButtonText: 'Cancel',
     reverseButtons: true,
     background: '#fff',
-    borderRadius: '16px',
   });
 }
 
@@ -25,7 +24,6 @@ export function toastSuccess(msg: string) {
     toast: true,
     position: 'top-end',
     background: '#fff',
-    borderRadius: '12px',
   });
 }
 
@@ -38,6 +36,5 @@ export function toastError(msg: string) {
     toast: true,
     position: 'top-end',
     background: '#fff',
-    borderRadius: '12px',
   });
 }

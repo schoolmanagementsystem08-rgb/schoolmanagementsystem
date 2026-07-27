@@ -9,31 +9,27 @@ const router = Router();
 
 router.get('/', async (req, res) => {
   try {
-    const allStudents = await db
-      .select({
-        id: students.id,
-        studentId: students.studentId,
-        name: users.name,
-        email: users.email,
-        gender: students.gender,
-        classId: students.classId,
-        className: classes.name,
-        academicYear: classes.academicYear,
-        teacherName: sql<string>`(SELECT tu.name FROM teachers t JOIN users tu ON t.user_id = tu.id WHERE t.id = ${classes.teacherId})`,
-        enrollmentDate: students.enrollmentDate,
-        status: students.status,
-        guardianId: students.guardianId,
-        guardianName: guardians.name,
-        guardianPhone: guardians.phone,
-        guardianEmail: guardians.email,
-        guardianRelationship: guardians.relationship,
-        balance: sql<string>`COALESCE((SELECT SUM(CASE WHEN f.status = 'Paid' THEN 0 ELSE f.amount END) - SUM(CASE WHEN f.status = 'Paid' THEN f.amount ELSE 0 END) FROM ${fees} f WHERE f.student_id = ${students.id}), 0)`,
-      })
-      .from(students)
-      .leftJoin(users, eq(students.userId, users.id))
-      .leftJoin(classes, eq(students.classId, classes.id))
-      .leftJoin(guardians, eq(students.guardianId, guardians.id));
-    res.json(allStudents);
+    const result = await db.execute(sql`
+      SELECT
+        s.id, s.student_id as "studentId", u.name, u.email, s.gender,
+        s.class_id as "classId", c.name as "className", c.academic_year as "academicYear",
+        (SELECT tu.name FROM teachers t JOIN users tu ON t.user_id = tu.id WHERE t.id = c.teacher_id) as "teacherName",
+        s.enrollment_date as "enrollmentDate", s.status,
+        s.guardian_id as "guardianId", g.name as "guardianName", g.phone as "guardianPhone",
+        g.email as "guardianEmail", g.relationship as "guardianRelationship",
+        COALESCE(f.balance, 0) as balance
+      FROM students s
+      LEFT JOIN users u ON s.user_id = u.id
+      LEFT JOIN classes c ON s.class_id = c.id
+      LEFT JOIN guardians g ON s.guardian_id = g.id
+      LEFT JOIN (
+        SELECT student_id,
+          SUM(CASE WHEN status = 'Paid' THEN 0 ELSE amount END) -
+          SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END) as balance
+        FROM fees GROUP BY student_id
+      ) f ON s.id = f.student_id
+    `);
+    res.json(result.rows);
   } catch (error) {
     console.error('Error fetching students:', error);
     res.status(500).json({ error: 'Failed to fetch students' });
