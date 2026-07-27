@@ -17,7 +17,9 @@ router.get('/', async (req, res) => {
         s.enrollment_date as "enrollmentDate", s.status,
         s.guardian_id as "guardianId", g.name as "guardianName", g.phone as "guardianPhone",
         g.email as "guardianEmail", g.relationship as "guardianRelationship",
-        COALESCE(f.balance, 0) as balance
+        COALESCE(f.balance, 0) as balance,
+        (SELECT json_build_object('name', sc.scholarship_name, 'discount', sc.discount_percentage, 'type', sc.type)
+         FROM scholarships sc WHERE sc.student_id = s.id AND sc.status = 'Active' LIMIT 1) as scholarship
       FROM students s
       LEFT JOIN users u ON s.user_id = u.id
       LEFT JOIN classes c ON s.class_id = c.id

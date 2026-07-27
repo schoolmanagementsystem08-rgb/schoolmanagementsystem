@@ -42,6 +42,7 @@ export async function initializeDatabase() {
         CREATE TABLE IF NOT EXISTS "roles" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL UNIQUE, "description" text, "permissions" jsonb DEFAULT '{}' NOT NULL, "is_system" boolean DEFAULT false NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "deleted_records" ("id" serial PRIMARY KEY NOT NULL, "table_name" text NOT NULL, "record_id" integer NOT NULL, "data" jsonb NOT NULL, "deleted_at" timestamp DEFAULT now() NOT NULL, "purge_at" timestamp NOT NULL);
 CREATE TABLE IF NOT EXISTS "timetable" ("id" serial PRIMARY KEY NOT NULL, "class_id" integer NOT NULL, "subject_id" integer NOT NULL, "teacher_id" integer NOT NULL, "day_of_week" integer NOT NULL, "start_time" text NOT NULL, "end_time" text NOT NULL, "room" text, "term" text, "created_at" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "scholarships" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "scholarship_name" text NOT NULL, "type" text NOT NULL, "discount_percentage" real NOT NULL, "amount" real, "start_date" timestamp NOT NULL, "end_date" timestamp, "status" text DEFAULT 'Active' NOT NULL, "notes" text, "approved_by" integer, "created_at" timestamp DEFAULT now() NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_fees_student_id ON fees (student_id);
 CREATE INDEX IF NOT EXISTS idx_students_class_id ON students (class_id);
@@ -54,6 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_classes_teacher_id ON classes (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_subjects_teacher_id ON subjects (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_student_id ON attendance (student_id);
 CREATE INDEX IF NOT EXISTS idx_grades_student_id ON grades (student_id);
+CREATE INDEX IF NOT EXISTS idx_scholarships_student_id ON scholarships (student_id);
       `);
 
       await client.query(`
@@ -104,6 +106,238 @@ CREATE INDEX IF NOT EXISTS idx_grades_student_id ON grades (student_id);
             ALTER TABLE "users" ADD CONSTRAINT "users_auth_id_unique" UNIQUE("auth_id");
           END IF;
         END $$;
+      `);
+
+      await client.query(`
+        -- Row-Level Security: enable on all tables
+        ALTER TABLE IF EXISTS "users" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "schools" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "classes" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "students" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "guardians" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "teachers" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "qualifications" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "subjects" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "attendance" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "grades" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "assignments" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "submissions" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "announcements" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "events" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "fees" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "messages" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "roles" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "leave_requests" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "timetable" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "deleted_records" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE IF EXISTS "scholarships" ENABLE ROW LEVEL SECURITY;
+
+        -- Drop existing policies to make this idempotent
+        DROP POLICY IF EXISTS "users_select_policy" ON "users";
+        DROP POLICY IF EXISTS "users_insert_policy" ON "users";
+        DROP POLICY IF EXISTS "users_update_policy" ON "users";
+        DROP POLICY IF EXISTS "users_delete_policy" ON "users";
+
+        DROP POLICY IF EXISTS "schools_select_policy" ON "schools";
+        DROP POLICY IF EXISTS "schools_insert_policy" ON "schools";
+        DROP POLICY IF EXISTS "schools_update_policy" ON "schools";
+
+        DROP POLICY IF EXISTS "classes_select_policy" ON "classes";
+        DROP POLICY IF EXISTS "classes_insert_policy" ON "classes";
+        DROP POLICY IF EXISTS "classes_update_policy" ON "classes";
+        DROP POLICY IF EXISTS "classes_delete_policy" ON "classes";
+
+        DROP POLICY IF EXISTS "students_select_policy" ON "students";
+        DROP POLICY IF EXISTS "students_insert_policy" ON "students";
+        DROP POLICY IF EXISTS "students_update_policy" ON "students";
+        DROP POLICY IF EXISTS "students_delete_policy" ON "students";
+
+        DROP POLICY IF EXISTS "guardians_select_policy" ON "guardians";
+        DROP POLICY IF EXISTS "guardians_insert_policy" ON "guardians";
+        DROP POLICY IF EXISTS "guardians_update_policy" ON "guardians";
+
+        DROP POLICY IF EXISTS "teachers_select_policy" ON "teachers";
+        DROP POLICY IF EXISTS "teachers_insert_policy" ON "teachers";
+        DROP POLICY IF EXISTS "teachers_update_policy" ON "teachers";
+        DROP POLICY IF EXISTS "teachers_delete_policy" ON "teachers";
+
+        DROP POLICY IF EXISTS "subjects_select_policy" ON "subjects";
+        DROP POLICY IF EXISTS "subjects_insert_policy" ON "subjects";
+        DROP POLICY IF EXISTS "subjects_update_policy" ON "subjects";
+        DROP POLICY IF EXISTS "subjects_delete_policy" ON "subjects";
+
+        DROP POLICY IF EXISTS "attendance_select_policy" ON "attendance";
+        DROP POLICY IF EXISTS "attendance_insert_policy" ON "attendance";
+        DROP POLICY IF EXISTS "attendance_update_policy" ON "attendance";
+        DROP POLICY IF EXISTS "attendance_delete_policy" ON "attendance";
+
+        DROP POLICY IF EXISTS "grades_select_policy" ON "grades";
+        DROP POLICY IF EXISTS "grades_insert_policy" ON "grades";
+        DROP POLICY IF EXISTS "grades_update_policy" ON "grades";
+        DROP POLICY IF EXISTS "grades_delete_policy" ON "grades";
+
+        DROP POLICY IF EXISTS "fees_select_policy" ON "fees";
+        DROP POLICY IF EXISTS "fees_insert_policy" ON "fees";
+        DROP POLICY IF EXISTS "fees_update_policy" ON "fees";
+        DROP POLICY IF EXISTS "fees_delete_policy" ON "fees";
+
+        DROP POLICY IF EXISTS "announcements_select_policy" ON "announcements";
+        DROP POLICY IF EXISTS "announcements_insert_policy" ON "announcements";
+        DROP POLICY IF EXISTS "announcements_update_policy" ON "announcements";
+        DROP POLICY IF EXISTS "announcements_delete_policy" ON "announcements";
+
+        DROP POLICY IF EXISTS "messages_select_policy" ON "messages";
+        DROP POLICY IF EXISTS "messages_insert_policy" ON "messages";
+        DROP POLICY IF EXISTS "messages_update_policy" ON "messages";
+        DROP POLICY IF EXISTS "messages_delete_policy" ON "messages";
+
+        DROP POLICY IF EXISTS "roles_select_policy" ON "roles";
+        DROP POLICY IF EXISTS "roles_insert_policy" ON "roles";
+        DROP POLICY IF EXISTS "roles_update_policy" ON "roles";
+        DROP POLICY IF EXISTS "roles_delete_policy" ON "roles";
+
+        DROP POLICY IF EXISTS "leave_requests_select_policy" ON "leave_requests";
+        DROP POLICY IF EXISTS "leave_requests_insert_policy" ON "leave_requests";
+        DROP POLICY IF EXISTS "leave_requests_update_policy" ON "leave_requests";
+        DROP POLICY IF EXISTS "leave_requests_delete_policy" ON "leave_requests";
+
+        DROP POLICY IF EXISTS "timetable_select_policy" ON "timetable";
+        DROP POLICY IF EXISTS "timetable_insert_policy" ON "timetable";
+        DROP POLICY IF EXISTS "timetable_update_policy" ON "timetable";
+        DROP POLICY IF EXISTS "timetable_delete_policy" ON "timetable";
+
+        DROP POLICY IF EXISTS "scholarships_select_policy" ON "scholarships";
+        DROP POLICY IF EXISTS "scholarships_insert_policy" ON "scholarships";
+        DROP POLICY IF EXISTS "scholarships_update_policy" ON "scholarships";
+        DROP POLICY IF EXISTS "scholarships_delete_policy" ON "scholarships";
+
+        -- Create policies: admins have full access, teachers read their related data, students/parents read own
+        CREATE POLICY "users_select_policy" ON "users" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR auth_id::text = current_setting('app.user_id', true)
+          OR current_setting('app.role', true) = 'teacher'
+        );
+        CREATE POLICY "users_insert_policy" ON "users" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "users_update_policy" ON "users" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "users_delete_policy" ON "users" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "schools_select_policy" ON "schools" FOR SELECT USING (true);
+        CREATE POLICY "schools_insert_policy" ON "schools" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "schools_update_policy" ON "schools" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "classes_select_policy" ON "classes" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR EXISTS (SELECT 1 FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)) AND teachers.id = classes.teacher_id)
+        );
+        CREATE POLICY "classes_insert_policy" ON "classes" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "classes_update_policy" ON "classes" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "classes_delete_policy" ON "classes" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "students_select_policy" ON "students" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR EXISTS (SELECT 1 FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)) AND teachers.id = (SELECT teacher_id FROM classes WHERE classes.id = students.class_id))
+          OR students.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+        );
+        CREATE POLICY "students_insert_policy" ON "students" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "students_update_policy" ON "students" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "students_delete_policy" ON "students" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "guardians_select_policy" ON "guardians" FOR SELECT USING (current_setting('app.role', true) IN ('admin', 'teacher'));
+        CREATE POLICY "guardians_insert_policy" ON "guardians" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "guardians_update_policy" ON "guardians" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "teachers_select_policy" ON "teachers" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+        );
+        CREATE POLICY "teachers_insert_policy" ON "teachers" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "teachers_update_policy" ON "teachers" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "teachers_delete_policy" ON "teachers" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "subjects_select_policy" ON "subjects" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR subjects.teacher_id IN (SELECT teachers.id FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))
+        );
+        CREATE POLICY "subjects_insert_policy" ON "subjects" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "subjects_update_policy" ON "subjects" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "subjects_delete_policy" ON "subjects" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "attendance_select_policy" ON "attendance" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR EXISTS (SELECT 1 FROM students WHERE students.id = attendance.student_id AND students.class_id IN (SELECT classes.id FROM classes WHERE classes.teacher_id IN (SELECT teachers.id FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))))
+          OR attendance.student_id IN (SELECT students.id FROM students WHERE students.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))
+        );
+        CREATE POLICY "attendance_insert_policy" ON "attendance" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "attendance_update_policy" ON "attendance" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "attendance_delete_policy" ON "attendance" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "grades_select_policy" ON "grades" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR EXISTS (SELECT 1 FROM subjects WHERE subjects.id = grades.subject_id AND subjects.teacher_id IN (SELECT teachers.id FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))))
+          OR grades.student_id IN (SELECT students.id FROM students WHERE students.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))
+        );
+        CREATE POLICY "grades_insert_policy" ON "grades" FOR INSERT WITH CHECK (current_setting('app.role', true) IN ('admin', 'teacher'));
+        CREATE POLICY "grades_update_policy" ON "grades" FOR UPDATE USING (current_setting('app.role', true) IN ('admin', 'teacher'));
+        CREATE POLICY "grades_delete_policy" ON "grades" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "fees_select_policy" ON "fees" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR fees.student_id IN (SELECT students.id FROM students WHERE students.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))
+        );
+        CREATE POLICY "fees_insert_policy" ON "fees" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "fees_update_policy" ON "fees" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "fees_delete_policy" ON "fees" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "announcements_select_policy" ON "announcements" FOR SELECT USING (true);
+        CREATE POLICY "announcements_insert_policy" ON "announcements" FOR INSERT WITH CHECK (current_setting('app.role', true) IN ('admin', 'teacher'));
+        CREATE POLICY "announcements_update_policy" ON "announcements" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "announcements_delete_policy" ON "announcements" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "messages_select_policy" ON "messages" FOR SELECT USING (
+          messages.sender_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+          OR messages.receiver_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+        );
+        CREATE POLICY "messages_insert_policy" ON "messages" FOR INSERT WITH CHECK (
+          messages.sender_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+        );
+        CREATE POLICY "messages_update_policy" ON "messages" FOR UPDATE USING (
+          messages.receiver_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+        );
+        CREATE POLICY "messages_delete_policy" ON "messages" FOR DELETE USING (
+          messages.sender_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+          OR messages.receiver_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true))
+        );
+
+        CREATE POLICY "roles_select_policy" ON "roles" FOR SELECT USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "roles_insert_policy" ON "roles" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "roles_update_policy" ON "roles" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "roles_delete_policy" ON "roles" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "leave_requests_select_policy" ON "leave_requests" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR leave_requests.teacher_id IN (SELECT teachers.id FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))
+        );
+        CREATE POLICY "leave_requests_insert_policy" ON "leave_requests" FOR INSERT WITH CHECK (
+          leave_requests.teacher_id IN (SELECT teachers.id FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))
+        );
+        CREATE POLICY "leave_requests_update_policy" ON "leave_requests" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "leave_requests_delete_policy" ON "leave_requests" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "timetable_select_policy" ON "timetable" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR EXISTS (SELECT 1 FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)) AND teachers.id = timetable.teacher_id)
+        );
+        CREATE POLICY "timetable_insert_policy" ON "timetable" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "timetable_update_policy" ON "timetable" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "timetable_delete_policy" ON "timetable" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        CREATE POLICY "scholarships_select_policy" ON "scholarships" FOR SELECT USING (
+          current_setting('app.role', true) = 'admin'
+          OR EXISTS (SELECT 1 FROM teachers WHERE teachers.user_id = (SELECT id FROM users WHERE auth_id::text = current_setting('app.user_id', true)))
+        );
+        CREATE POLICY "scholarships_insert_policy" ON "scholarships" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "scholarships_update_policy" ON "scholarships" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "scholarships_delete_policy" ON "scholarships" FOR DELETE USING (current_setting('app.role', true) = 'admin');
       `);
 
       console.log('✅ Database tables ready');

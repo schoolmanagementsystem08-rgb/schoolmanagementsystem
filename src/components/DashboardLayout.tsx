@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, BookOpen, Calendar, GraduationCap, FileText,
   CreditCard, Bell, MessageSquare, Settings, Menu, LogOut, ChevronRight,
   ClipboardList, Shield, Bus, Truck, Library, PiggyBank, Timer, PencilLine,
-  Archive,
+  Archive, Award,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,6 +45,7 @@ const sidebarSections: SidebarSection[] = [
       { icon: ClipboardList, label: 'Homework', href: '/homework', roles: ['admin', 'teacher'] },
       { icon: Calendar, label: 'Attendance', href: '/attendance', roles: ['admin'] },
       { icon: FileText, label: 'Grades', href: '/grades', roles: ['admin'] },
+      { icon: Award, label: 'Scholarships', href: '/scholarships', roles: ['admin'] },
     ],
   },
   {

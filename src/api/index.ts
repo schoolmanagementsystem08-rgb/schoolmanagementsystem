@@ -17,6 +17,7 @@ import adminUsersRouter from './admin-users';
 import leaveRequestsRouter from './leave-requests';
 import deletedRecordsRouter from './deleted-records';
 import timetableRouter from './timetable';
+import scholarshipsRouter from './scholarships';
 
 export {
   healthRouter,
@@ -38,4 +39,5 @@ export {
   leaveRequestsRouter,
   deletedRecordsRouter,
   timetableRouter,
+  scholarshipsRouter,
 };

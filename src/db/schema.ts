@@ -181,6 +181,21 @@ export const timetable = pgTable('timetable', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const scholarships = pgTable('scholarships', {
+  id: serial('id').primaryKey(),
+  studentId: integer('student_id').notNull(),
+  scholarshipName: text('scholarship_name').notNull(),
+  type: text('type').notNull(), // full, partial
+  discountPercentage: real('discount_percentage').notNull(),
+  amount: real('amount'),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  status: text('status').default('Active').notNull(),
+  notes: text('notes'),
+  approvedBy: integer('approved_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const roles = pgTable('roles', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),

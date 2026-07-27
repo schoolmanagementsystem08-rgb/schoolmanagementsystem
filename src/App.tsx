@@ -23,6 +23,7 @@ import InventoryPage from './pages/Inventory.tsx';
 import TransportPage from './pages/Transport.tsx';
 import PayrollPage from './pages/Payroll.tsx';
 import DeletedRecordsPage from './pages/DeletedRecords.tsx';
+import ScholarshipsPage from './pages/Scholarships.tsx';
 
 import TeacherDashboard from './pages/TeacherDashboard.tsx';
 import TeacherClasses from './pages/TeacherClasses.tsx';
@@ -131,6 +132,7 @@ function AppRoutes() {
             <Route path="/transport" element={<TransportPage />} />
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/deleted-records" element={<DeletedRecordsPage />} />
+            <Route path="/scholarships" element={<ScholarshipsPage />} />
           </>
         )}
 

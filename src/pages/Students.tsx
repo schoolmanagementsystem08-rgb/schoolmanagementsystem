@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, X, Eye, User, DollarSign } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye, User, DollarSign, Award } from 'lucide-react';
 import api from '../lib/api.ts';
 import { TableSkeleton } from '../components/Skeletons.tsx';
 
@@ -15,6 +15,7 @@ interface Student {
   guardianId: number | null; guardianName: string | null; guardianPhone: string | null;
   guardianEmail: string | null; guardianRelationship: string | null;
   balance: string;
+  scholarship: { name: string; discount: number; type: string } | null;
 }
 
 interface FeeRecord {
@@ -173,15 +174,16 @@ export default function StudentsPage() {
                 <th className="px-4 py-3">Head Teacher</th>
                 <th className="px-4 py-3">Guardian</th>
                 <th className="px-4 py-3">Balance</th>
+                <th className="px-4 py-3">Scholarship</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {isLoading ? (
-                <tr><td colSpan={9} className="px-4 py-4"><TableSkeleton rows={5} cols={7} /></td></tr>
+                <tr><td colSpan={10} className="px-4 py-4"><TableSkeleton rows={5} cols={7} /></td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-neutral-400">
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-neutral-400">
                   {search ? 'No students match your search.' : 'No students enrolled yet.'}
                 </td></tr>
               ) : filtered.map((s) => {
@@ -208,6 +210,16 @@ export default function StudentsPage() {
                       <span className={`text-sm font-semibold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {bal > 0 ? `$${bal.toLocaleString()}` : '$0'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {s.scholarship ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                          <Award className="w-3 h-3" />
+                          {s.scholarship.discount}%
+                        </span>
+                      ) : (
+                        <span className="text-xs text-neutral-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
