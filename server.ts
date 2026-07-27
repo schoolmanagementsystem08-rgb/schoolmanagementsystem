@@ -32,6 +32,8 @@ import {
   timetableRouter,
   scholarshipsRouter,
   logsRouter,
+  feeStructuresRouter,
+  feePaymentsRouter,
 } from './src/api';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler';
 import { initializeDatabase } from './src/db';
@@ -94,6 +96,8 @@ async function startServer() {
   app.use('/api/timetable', timetableRouter);
   app.use('/api/scholarships', scholarshipsRouter);
   app.use('/api/logs', logsRouter);
+  app.use('/api/fee-structures', feeStructuresRouter);
+  app.use('/api/fee-payments', feePaymentsRouter);
 
   // AI endpoint
   app.post('/api/ai', async (req, res) => {

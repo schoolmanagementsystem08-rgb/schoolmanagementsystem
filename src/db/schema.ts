@@ -150,6 +150,30 @@ export const fees = pgTable('fees', {
   term: text('term').notNull(),
 });
 
+export const feeStructures = pgTable('fee_structures', {
+  id: serial('id').primaryKey(),
+  classId: integer('class_id').notNull(),
+  academicYear: text('academic_year').notNull(),
+  term: text('term').notNull(),
+  totalAmount: real('total_amount').notNull(),
+  description: text('description'),
+  dueDate: timestamp('due_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const feePayments = pgTable('fee_payments', {
+  id: serial('id').primaryKey(),
+  studentId: integer('student_id').notNull(),
+  structureId: integer('structure_id').notNull(),
+  amount: real('amount').notNull(),
+  paymentDate: timestamp('payment_date').defaultNow().notNull(),
+  paymentMethod: text('payment_method'),
+  referenceNo: text('reference_no'),
+  notes: text('notes'),
+  recordedBy: integer('recorded_by'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),
   senderId: integer('sender_id').notNull(),

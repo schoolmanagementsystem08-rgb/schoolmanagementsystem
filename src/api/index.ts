@@ -19,6 +19,8 @@ import deletedRecordsRouter from './deleted-records';
 import timetableRouter from './timetable';
 import scholarshipsRouter from './scholarships';
 import logsRouter from './logs';
+import feeStructuresRouter from './fee-structures';
+import feePaymentsRouter from './fee-payments';
 
 export {
   healthRouter,
@@ -42,4 +44,6 @@ export {
   timetableRouter,
   scholarshipsRouter,
   logsRouter,
+  feeStructuresRouter,
+  feePaymentsRouter,
 };

@@ -38,6 +38,8 @@ export async function initializeDatabase() {
         CREATE TABLE IF NOT EXISTS "announcements" ("id" serial PRIMARY KEY NOT NULL, "title" text NOT NULL, "body" text NOT NULL, "school_id" integer NOT NULL, "target_role" text, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "events" ("id" serial PRIMARY KEY NOT NULL, "title" text NOT NULL, "date" timestamp NOT NULL, "location" text, "school_id" integer NOT NULL, "description" text);
         CREATE TABLE IF NOT EXISTS "fees" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "amount" real NOT NULL, "due_date" timestamp NOT NULL, "status" text NOT NULL, "term" text NOT NULL);
+CREATE TABLE IF NOT EXISTS "fee_structures" ("id" serial PRIMARY KEY NOT NULL, "class_id" integer NOT NULL, "academic_year" text NOT NULL, "term" text NOT NULL, "total_amount" real NOT NULL, "description" text, "due_date" timestamp, "created_at" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "fee_payments" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "structure_id" integer NOT NULL, "amount" real NOT NULL, "payment_date" timestamp DEFAULT now() NOT NULL, "payment_method" text, "reference_no" text, "notes" text, "recorded_by" integer, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "messages" ("id" serial PRIMARY KEY NOT NULL, "sender_id" integer NOT NULL, "receiver_id" integer NOT NULL, "body" text NOT NULL, "read" boolean DEFAULT false, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "roles" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL UNIQUE, "description" text, "permissions" jsonb DEFAULT '{}' NOT NULL, "is_system" boolean DEFAULT false NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "deleted_records" ("id" serial PRIMARY KEY NOT NULL, "table_name" text NOT NULL, "record_id" integer NOT NULL, "data" jsonb NOT NULL, "deleted_at" timestamp DEFAULT now() NOT NULL, "purge_at" timestamp NOT NULL);
@@ -47,6 +49,9 @@ CREATE TABLE IF NOT EXISTS "activity_logs" ("id" serial PRIMARY KEY NOT NULL, "u
 CREATE TABLE IF NOT EXISTS "error_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer, "user_name" text, "level" text DEFAULT 'error' NOT NULL, "message" text NOT NULL, "stack" text, "context" jsonb, "ip_address" text, "url" text, "timestamp" timestamp DEFAULT now() NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_fees_student_id ON fees (student_id);
+CREATE INDEX IF NOT EXISTS idx_fee_structures_class_term ON fee_structures (class_id, academic_year, term);
+CREATE INDEX IF NOT EXISTS idx_fee_payments_student ON fee_payments (student_id);
+CREATE INDEX IF NOT EXISTS idx_fee_payments_structure ON fee_payments (structure_id);
 CREATE INDEX IF NOT EXISTS idx_students_class_id ON students (class_id);
 CREATE INDEX IF NOT EXISTS idx_students_user_id ON students (user_id);
 CREATE INDEX IF NOT EXISTS idx_teachers_user_id ON teachers (user_id);
@@ -139,6 +144,8 @@ CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs (timestamp);
         ALTER TABLE IF EXISTS "scholarships" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS "activity_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS "error_logs" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS "fee_structures" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS "fee_payments" ENABLE ROW LEVEL SECURITY;
 
         -- Drop existing policies to make this idempotent
         DROP POLICY IF EXISTS "users_select_policy" ON "users";
@@ -356,6 +363,24 @@ ALTER TABLE IF EXISTS "error_logs" ENABLE ROW LEVEL SECURITY;
         CREATE POLICY "activity_logs_insert_policy" ON "activity_logs" FOR INSERT WITH CHECK (true);
         CREATE POLICY "error_logs_select_policy" ON "error_logs" FOR SELECT USING (current_setting('app.role', true) = 'admin');
         CREATE POLICY "error_logs_insert_policy" ON "error_logs" FOR INSERT WITH CHECK (true);
+
+        DROP POLICY IF EXISTS "fee_structures_select_policy" ON "fee_structures";
+        DROP POLICY IF EXISTS "fee_structures_insert_policy" ON "fee_structures";
+        DROP POLICY IF EXISTS "fee_structures_update_policy" ON "fee_structures";
+        DROP POLICY IF EXISTS "fee_structures_delete_policy" ON "fee_structures";
+        DROP POLICY IF EXISTS "fee_payments_select_policy" ON "fee_payments";
+        DROP POLICY IF EXISTS "fee_payments_insert_policy" ON "fee_payments";
+        DROP POLICY IF EXISTS "fee_payments_update_policy" ON "fee_payments";
+        DROP POLICY IF EXISTS "fee_payments_delete_policy" ON "fee_payments";
+
+        CREATE POLICY "fee_structures_select_policy" ON "fee_structures" FOR SELECT USING (true);
+        CREATE POLICY "fee_structures_insert_policy" ON "fee_structures" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "fee_structures_update_policy" ON "fee_structures" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "fee_structures_delete_policy" ON "fee_structures" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "fee_payments_select_policy" ON "fee_payments" FOR SELECT USING (true);
+        CREATE POLICY "fee_payments_insert_policy" ON "fee_payments" FOR INSERT WITH CHECK (current_setting('app.role', true) IN ('admin', 'teacher'));
+        CREATE POLICY "fee_payments_update_policy" ON "fee_payments" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "fee_payments_delete_policy" ON "fee_payments" FOR DELETE USING (current_setting('app.role', true) = 'admin');
       `);
 
       console.log('✅ Database tables ready');
