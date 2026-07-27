@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Megaphone, Calendar, MapPin, Plus, Edit2, Trash2, X } from 'lucide-react';
 import api from '../lib/api.ts';
+import { confirmDelete, toastSuccess, toastError } from '../lib/alerts.ts';
 
 interface Announcement {
   id: number;
@@ -25,7 +26,6 @@ export default function AnnouncementsPage() {
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [form, setForm] = useState<AnnouncementForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<number | null>(null);
 
   useEffect(() => { fetchAnnouncements(); }, []);
 
@@ -67,13 +67,13 @@ export default function AnnouncementsPage() {
   };
 
   const handleDelete = async (id: number) => {
+    const result = await confirmDelete('this announcement');
+    if (!result.isConfirmed) return;
     try {
       await api.delete(`/announcements/${id}`);
-      setDeleting(null);
+      toastSuccess('Announcement deleted');
       await fetchAnnouncements();
-    } catch (err) {
-      console.error('Failed to delete announcement', err);
-    }
+    } catch (err) { toastError('Failed to delete announcement'); console.error(err); }
   };
 
   const getTypeColor = (title: string) => {
@@ -128,7 +128,7 @@ export default function AnnouncementsPage() {
                       <button onClick={() => openEdit(item)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => setDeleting(item.id)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -202,20 +202,6 @@ export default function AnnouncementsPage() {
         </div>
       )}
 
-      {deleting !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="px-6 py-5">
-              <h2 className="text-lg font-bold mb-2">Delete Announcement</h2>
-              <p className="text-neutral-500 text-sm">Are you sure you want to delete this announcement? This action cannot be undone.</p>
-            </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-100 bg-neutral-50">
-              <button onClick={() => setDeleting(null)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl">Cancel</button>
-              <button onClick={() => handleDelete(deleting)} className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Save, User } from 'lucide-react';
 import api from '../lib/api.ts';
+import { toastSuccess, toastError } from '../lib/alerts.ts';
 
 interface ClassOption {
   id: number;
@@ -50,10 +51,10 @@ export default function AttendancePage() {
     setSaving(true);
     try {
       await api.post('/attendance/batch', { classId: Number(selectedClass), date: attendanceDate, records: attendance });
-      alert('Attendance saved successfully!');
+      toastSuccess('Attendance saved successfully!');
     } catch (err) {
       console.error('Failed to save attendance', err);
-      alert('Failed to save attendance.');
+      toastError('Failed to save attendance.');
     } finally {
       setSaving(false);
     }

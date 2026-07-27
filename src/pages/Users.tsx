@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users as UsersIcon, Search, Trash2, X, Check } from 'lucide-react';
 import api from '../lib/api.ts';
+import { confirmDelete, toastSuccess, toastError } from '../lib/alerts.ts';
 
 const roleOptions = ['admin', 'teacher', 'student', 'parent'];
 
@@ -10,7 +11,6 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [editingRole, setEditingRole] = useState<{ id: number; role: string } | null>(null);
-  const [deleting, setDeleting] = useState<number | null>(null);
 
   const loadUsers = async () => {
     try {
@@ -45,15 +45,14 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleting) return;
+  const handleDelete = async (id: number) => {
+    const result = await confirmDelete('this user');
+    if (!result.isConfirmed) return;
     try {
-      await api.delete(`/admin/users/${deleting}`);
-      setDeleting(null);
+      await api.delete(`/admin/users/${id}`);
+      toastSuccess('User deleted');
       await loadUsers();
-    } catch (err) {
-      console.error('Failed to delete user', err);
-    }
+    } catch (err) { toastError('Failed to delete user'); console.error(err); }
   };
 
   const filtered = userList.filter(u =>
@@ -131,7 +130,7 @@ export default function UsersPage() {
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => setDeleting(u.id)}
+                      <button onClick={() => handleDelete(u.id)}
                         className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -144,22 +143,6 @@ export default function UsersPage() {
         )}
       </div>
 
-      {deleting !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="px-6 py-5">
-              <h2 className="text-lg font-bold mb-2">Delete User</h2>
-              <p className="text-neutral-500 text-sm">Are you sure? This action cannot be undone.</p>
-            </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-100 bg-neutral-50">
-              <button onClick={() => setDeleting(null)}
-                className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl">Cancel</button>
-              <button onClick={handleDelete}
-                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

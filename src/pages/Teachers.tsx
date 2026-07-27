@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Edit2, Trash2, X, BookOpen, GraduationCap, Calendar, Shield, Eye, ToggleLeft, ToggleRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 import api from '../lib/api.ts';
+import { confirmDelete, toastSuccess, toastError } from '../lib/alerts.ts';
 
 interface Teacher {
   id: number; name: string; email: string; employeeId: string | null;
@@ -39,7 +40,6 @@ export default function TeachersPage() {
   const [editing, setEditing] = useState<Teacher | null>(null);
   const [form, setForm] = useState<TeacherForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'teachers' | 'leave'>('teachers');
   const [assigning, setAssigning] = useState<Teacher | null>(null);
   const [assignType, setAssignType] = useState<'class' | 'subject'>('class');
@@ -123,8 +123,10 @@ export default function TeachersPage() {
   };
 
   const handleDelete = async (id: number) => {
-    try { await api.delete(`/teachers/${id}`); setDeleting(null); await fetchTeachers(); }
-    catch (err) { console.error('Failed to delete teacher', err); }
+    const result = await confirmDelete('this teacher');
+    if (!result.isConfirmed) return;
+    try { await api.delete(`/teachers/${id}`); toastSuccess('Teacher deleted'); await fetchTeachers(); }
+    catch (err) { toastError('Failed to delete teacher'); console.error(err); }
   };
 
   const handleAssignSave = async () => {
@@ -264,7 +266,7 @@ export default function TeachersPage() {
                           <button onClick={() => openEdit(t)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-blue-600" title="Edit"><Edit2 className="w-4 h-4" /></button>
                           <button onClick={() => openAssign(t, 'class')} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-green-600" title="Assign classes"><GraduationCap className="w-4 h-4" /></button>
                           <button onClick={() => openAssign(t, 'subject')} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-purple-600" title="Assign subjects"><BookOpen className="w-4 h-4" /></button>
-                          <button onClick={() => setDeleting(t.id)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => handleDelete(t.id)} className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600" title="Delete"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </tr>
@@ -498,21 +500,6 @@ export default function TeachersPage() {
         </div>
       )}
 
-      {deleting !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="px-6 py-5">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4"><Trash2 className="w-6 h-6 text-red-600" /></div>
-              <h2 className="text-lg font-bold text-center mb-2">Delete Teacher</h2>
-              <p className="text-neutral-500 text-sm text-center">This will unassign all classes, delete the teacher record and user account. <strong>Cannot</strong> be undone.</p>
-            </div>
-            <div className="flex items-center justify-center gap-3 px-6 py-4 border-t border-neutral-100 bg-neutral-50">
-              <button onClick={() => setDeleting(null)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl">Cancel</button>
-              <button onClick={() => handleDelete(deleting)} className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700">Delete Permanently</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

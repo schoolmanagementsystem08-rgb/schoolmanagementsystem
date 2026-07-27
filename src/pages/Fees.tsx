@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, DollarSign, Clock, CheckCircle2, FileText, Plus, Edit2, Trash2, X } from 'lucide-react';
 import api from '../lib/api.ts';
+import { confirmDelete, toastSuccess, toastError } from '../lib/alerts.ts';
 
 interface Fee {
   id: number;
@@ -30,8 +31,6 @@ export default function FeesPage() {
   const [editing, setEditing] = useState<Fee | null>(null);
   const [form, setForm] = useState<FeeForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<number | null>(null);
-
   useEffect(() => {
     Promise.all([
       api.get('/fees'),
@@ -76,15 +75,19 @@ export default function FeesPage() {
     }
   };
 
+  const fetchFees = async () => {
+    const res = await api.get('/fees');
+    setFees(Array.isArray(res.data) ? res.data : []);
+  };
+
   const handleDelete = async (id: number) => {
+    const result = await confirmDelete('this fee record');
+    if (!result.isConfirmed) return;
     try {
       await api.delete(`/fees/${id}`);
-      setDeleting(null);
-      const res = await api.get('/fees');
-      setFees(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Failed to delete fee', err);
-    }
+      toastSuccess('Fee record deleted');
+      await fetchFees();
+    } catch (err) { toastError('Failed to delete fee record'); console.error(err); }
   };
 
   const totalOutstanding = fees.filter(f => f.status !== 'Paid').reduce((a, f) => a + Number(f.amount), 0);
@@ -167,7 +170,7 @@ export default function FeesPage() {
                         <button onClick={() => openEdit(fee)} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-blue-600">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setDeleting(fee.id)} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600">
+                        <button onClick={() => handleDelete(fee.id)} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -240,20 +243,6 @@ export default function FeesPage() {
         </div>
       )}
 
-      {deleting !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="px-6 py-5">
-              <h2 className="text-lg font-bold mb-2">Delete Fee</h2>
-              <p className="text-neutral-500 text-sm">Are you sure you want to delete this fee? This action cannot be undone.</p>
-            </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-100 bg-neutral-50">
-              <button onClick={() => setDeleting(null)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl">Cancel</button>
-              <button onClick={() => handleDelete(deleting)} className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

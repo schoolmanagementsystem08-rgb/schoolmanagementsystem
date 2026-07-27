@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Book, User, Calendar, Plus, Edit2, Trash2, X } from 'lucide-react';
 import api from '../lib/api.ts';
+import { confirmDelete, toastSuccess, toastError } from '../lib/alerts.ts';
 
 interface ClassItem {
   id: number;
@@ -26,7 +27,6 @@ export default function ClassesPage() {
   const [editing, setEditing] = useState<ClassItem | null>(null);
   const [form, setForm] = useState<ClassForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState<number | null>(null);
 
   useEffect(() => { fetchClasses(); }, []);
 
@@ -72,13 +72,13 @@ export default function ClassesPage() {
   };
 
   const handleDelete = async (id: number) => {
+    const result = await confirmDelete('this class');
+    if (!result.isConfirmed) return;
     try {
       await api.delete(`/classes/${id}`);
-      setDeleting(null);
+      toastSuccess('Class deleted');
       await fetchClasses();
-    } catch (err) {
-      console.error('Failed to delete class', err);
-    }
+    } catch (err) { toastError('Failed to delete class'); console.error(err); }
   };
 
   return (
@@ -110,7 +110,7 @@ export default function ClassesPage() {
                   <button onClick={() => openEdit(item)} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-blue-600">
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setDeleting(item.id)} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600">
+                  <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-neutral-100 rounded-lg text-neutral-400 hover:text-red-600">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -163,20 +163,6 @@ export default function ClassesPage() {
         </div>
       )}
 
-      {deleting !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
-            <div className="px-6 py-5">
-              <h2 className="text-lg font-bold mb-2">Delete Class</h2>
-              <p className="text-neutral-500 text-sm">Are you sure you want to delete this class? This action cannot be undone.</p>
-            </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-100 bg-neutral-50">
-              <button onClick={() => setDeleting(null)} className="px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-200 rounded-xl">Cancel</button>
-              <button onClick={() => handleDelete(deleting)} className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
