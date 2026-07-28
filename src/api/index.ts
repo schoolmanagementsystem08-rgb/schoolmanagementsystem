@@ -21,6 +21,8 @@ import scholarshipsRouter from './scholarships';
 import logsRouter from './logs';
 import feeStructuresRouter from './fee-structures';
 import feePaymentsRouter from './fee-payments';
+import teacherSalariesRouter from './teacher-salaries';
+import payrollRecordsRouter from './payroll-records';
 
 export {
   healthRouter,
@@ -46,4 +48,6 @@ export {
   logsRouter,
   feeStructuresRouter,
   feePaymentsRouter,
+  teacherSalariesRouter,
+  payrollRecordsRouter,
 };

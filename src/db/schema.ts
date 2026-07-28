@@ -111,6 +111,42 @@ export const qualifications = pgTable('qualifications', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const teacherSalaries = pgTable('teacher_salaries', {
+  id: serial('id').primaryKey(),
+  teacherId: integer('teacher_id').notNull(),
+  basicSalary: real('basic_salary').notNull(),
+  housingAllowance: real('housing_allowance').default(0).notNull(),
+  transportAllowance: real('transport_allowance').default(0).notNull(),
+  medicalAllowance: real('medical_allowance').default(0).notNull(),
+  otherAllowance: real('other_allowance').default(0).notNull(),
+  taxDeduction: real('tax_deduction').default(0).notNull(),
+  insuranceDeduction: real('insurance_deduction').default(0).notNull(),
+  otherDeduction: real('other_deduction').default(0).notNull(),
+  effectiveDate: timestamp('effective_date').notNull(),
+  status: text('status').default('Active').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const payrollRecords = pgTable('payroll_records', {
+  id: serial('id').primaryKey(),
+  teacherId: integer('teacher_id').notNull(),
+  period: text('period').notNull(),
+  basicSalary: real('basic_salary').notNull(),
+  housingAllowance: real('housing_allowance').default(0).notNull(),
+  transportAllowance: real('transport_allowance').default(0).notNull(),
+  medicalAllowance: real('medical_allowance').default(0).notNull(),
+  otherAllowance: real('other_allowance').default(0).notNull(),
+  bonus: real('bonus').default(0).notNull(),
+  taxDeduction: real('tax_deduction').default(0).notNull(),
+  insuranceDeduction: real('insurance_deduction').default(0).notNull(),
+  otherDeduction: real('other_deduction').default(0).notNull(),
+  netPay: real('net_pay').notNull(),
+  paymentDate: timestamp('payment_date'),
+  status: text('status').default('Draft').notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const leaveRequests = pgTable('leave_requests', {
   id: serial('id').primaryKey(),
   teacherId: integer('teacher_id').notNull(),

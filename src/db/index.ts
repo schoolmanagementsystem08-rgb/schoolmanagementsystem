@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS "fee_payments" ("id" serial PRIMARY KEY NOT NULL, "st
         CREATE TABLE IF NOT EXISTS "roles" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL UNIQUE, "description" text, "permissions" jsonb DEFAULT '{}' NOT NULL, "is_system" boolean DEFAULT false NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "deleted_records" ("id" serial PRIMARY KEY NOT NULL, "table_name" text NOT NULL, "record_id" integer NOT NULL, "data" jsonb NOT NULL, "deleted_at" timestamp DEFAULT now() NOT NULL, "purge_at" timestamp NOT NULL);
 CREATE TABLE IF NOT EXISTS "timetable" ("id" serial PRIMARY KEY NOT NULL, "class_id" integer NOT NULL, "subject_id" integer NOT NULL, "teacher_id" integer NOT NULL, "day_of_week" integer NOT NULL, "start_time" text NOT NULL, "end_time" text NOT NULL, "room" text, "term" text, "created_at" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "teacher_salaries" ("id" serial PRIMARY KEY NOT NULL, "teacher_id" integer NOT NULL, "basic_salary" real NOT NULL, "housing_allowance" real DEFAULT 0 NOT NULL, "transport_allowance" real DEFAULT 0 NOT NULL, "medical_allowance" real DEFAULT 0 NOT NULL, "other_allowance" real DEFAULT 0 NOT NULL, "tax_deduction" real DEFAULT 0 NOT NULL, "insurance_deduction" real DEFAULT 0 NOT NULL, "other_deduction" real DEFAULT 0 NOT NULL, "effective_date" timestamp NOT NULL, "status" text DEFAULT 'Active' NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "payroll_records" ("id" serial PRIMARY KEY NOT NULL, "teacher_id" integer NOT NULL, "period" text NOT NULL, "basic_salary" real NOT NULL, "housing_allowance" real DEFAULT 0 NOT NULL, "transport_allowance" real DEFAULT 0 NOT NULL, "medical_allowance" real DEFAULT 0 NOT NULL, "other_allowance" real DEFAULT 0 NOT NULL, "bonus" real DEFAULT 0 NOT NULL, "tax_deduction" real DEFAULT 0 NOT NULL, "insurance_deduction" real DEFAULT 0 NOT NULL, "other_deduction" real DEFAULT 0 NOT NULL, "net_pay" real NOT NULL, "payment_date" timestamp, "status" text DEFAULT 'Draft' NOT NULL, "notes" text, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "scholarships" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "scholarship_name" text NOT NULL, "type" text NOT NULL, "discount_percentage" real NOT NULL, "amount" real, "start_date" timestamp NOT NULL, "end_date" timestamp, "status" text DEFAULT 'Active' NOT NULL, "notes" text, "approved_by" integer, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "activity_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer, "user_name" text, "user_role" text, "action" text NOT NULL, "entity" text, "entity_id" integer, "details" jsonb, "ip_address" text, "user_agent" text, "path" text, "method" text, "timestamp" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "error_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer, "user_name" text, "level" text DEFAULT 'error' NOT NULL, "message" text NOT NULL, "stack" text, "context" jsonb, "ip_address" text, "url" text, "timestamp" timestamp DEFAULT now() NOT NULL);
@@ -67,6 +69,9 @@ CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs (timesta
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs (user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs (action);
 CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs (timestamp);
+CREATE INDEX IF NOT EXISTS idx_teacher_salaries_teacher ON teacher_salaries (teacher_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_records_teacher ON payroll_records (teacher_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records (period);
       `);
 
       await client.query(`
@@ -146,6 +151,8 @@ ALTER TABLE IF EXISTS "activity_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS "error_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS "fee_structures" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS "fee_payments" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS "teacher_salaries" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS "payroll_records" ENABLE ROW LEVEL SECURITY;
 
         -- Drop existing policies to make this idempotent
         DROP POLICY IF EXISTS "users_select_policy" ON "users";
@@ -381,6 +388,24 @@ ALTER TABLE IF EXISTS "fee_payments" ENABLE ROW LEVEL SECURITY;
         CREATE POLICY "fee_payments_insert_policy" ON "fee_payments" FOR INSERT WITH CHECK (current_setting('app.role', true) IN ('admin', 'teacher'));
         CREATE POLICY "fee_payments_update_policy" ON "fee_payments" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
         CREATE POLICY "fee_payments_delete_policy" ON "fee_payments" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+
+        DROP POLICY IF EXISTS "teacher_salaries_select_policy" ON "teacher_salaries";
+        DROP POLICY IF EXISTS "teacher_salaries_insert_policy" ON "teacher_salaries";
+        DROP POLICY IF EXISTS "teacher_salaries_update_policy" ON "teacher_salaries";
+        DROP POLICY IF EXISTS "teacher_salaries_delete_policy" ON "teacher_salaries";
+        DROP POLICY IF EXISTS "payroll_records_select_policy" ON "payroll_records";
+        DROP POLICY IF EXISTS "payroll_records_insert_policy" ON "payroll_records";
+        DROP POLICY IF EXISTS "payroll_records_update_policy" ON "payroll_records";
+        DROP POLICY IF EXISTS "payroll_records_delete_policy" ON "payroll_records";
+
+        CREATE POLICY "teacher_salaries_select_policy" ON "teacher_salaries" FOR SELECT USING (true);
+        CREATE POLICY "teacher_salaries_insert_policy" ON "teacher_salaries" FOR INSERT WITH CHECK (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "teacher_salaries_update_policy" ON "teacher_salaries" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "teacher_salaries_delete_policy" ON "teacher_salaries" FOR DELETE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "payroll_records_select_policy" ON "payroll_records" FOR SELECT USING (true);
+        CREATE POLICY "payroll_records_insert_policy" ON "payroll_records" FOR INSERT WITH CHECK (current_setting('app.role', true) IN ('admin', 'teacher'));
+        CREATE POLICY "payroll_records_update_policy" ON "payroll_records" FOR UPDATE USING (current_setting('app.role', true) = 'admin');
+        CREATE POLICY "payroll_records_delete_policy" ON "payroll_records" FOR DELETE USING (current_setting('app.role', true) = 'admin');
       `);
 
       console.log('✅ Database tables ready');
