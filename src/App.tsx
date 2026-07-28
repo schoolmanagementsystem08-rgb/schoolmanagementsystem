@@ -123,7 +123,7 @@ function AppRoutes() {
         <Route path="/timetables" element={<TimetablesPage />} />
         <Route path="/homework" element={<HomeworkPage />} />
 
-        {role === 'admin' && (
+        {(role === 'admin' || role === 'developer') && (
           <>
             <Route path="/students" element={<StudentsPage />} />
             <Route path="/teachers" element={<TeachersPage />} />
@@ -139,8 +139,10 @@ function AppRoutes() {
             <Route path="/payroll" element={<PayrollPage />} />
             <Route path="/deleted-records" element={<DeletedRecordsPage />} />
             <Route path="/scholarships" element={<ScholarshipsPage />} />
-            <Route path="/system-logs" element={<SystemLogsPage />} />
           </>
+        )}
+        {role === 'developer' && (
+          <Route path="/system-logs" element={<SystemLogsPage />} />
         )}
 
         {role === 'teacher' && (
