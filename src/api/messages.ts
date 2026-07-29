@@ -2,8 +2,10 @@ import { Router } from 'express';
 import { db } from '../db';
 import { messages, users } from '../db/schema';
 import { eq, or, and } from 'drizzle-orm';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/conversations/:userId', async (req, res) => {
   try {
@@ -85,13 +87,14 @@ router.get('/:userId/:otherId', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { senderId, receiverId, body } = req.body;
     if (!senderId || !receiverId || !body) {
       return res.status(400).json({ error: 'senderId, receiverId, and body are required' });
     }
     const [created] = await db
       .insert(messages)
-      .values({ senderId: Number(senderId), receiverId: Number(receiverId), body })
+      .values({ senderId: Number(senderId), receiverId: Number(receiverId), body, schoolId: schoolId ?? null })
       .returning();
     res.status(201).json(created);
   } catch (error) {

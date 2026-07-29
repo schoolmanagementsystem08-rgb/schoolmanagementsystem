@@ -3,8 +3,10 @@ import { db } from '../db';
 import { roles, users } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 const defaultPermissions: Record<string, string[]> = {
   admin: ['*'],

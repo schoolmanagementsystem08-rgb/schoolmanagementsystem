@@ -14,6 +14,7 @@ import MessagesPage from './pages/Messages.tsx';
 import AnnouncementsPage from './pages/Announcements.tsx';
 import ClassesPage from './pages/Classes.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
+import SuperAdminDashboard from './pages/SuperAdminDashboard.tsx';
 import TeachersPage from './pages/Teachers.tsx';
 import RolesPage from './pages/Roles.tsx';
 import UsersPage from './pages/Users.tsx';
@@ -152,6 +153,7 @@ function AppRoutes() {
     );
   }
 
+  const isSuperAdmin = role === 'superadmin';
   const isTeacher = role === 'teacher';
 
   usePageTracking();
@@ -160,7 +162,10 @@ function AppRoutes() {
     <DashboardLayout userRole={role}>
       <ErrorBoundary>
       <Routes>
-        <Route path="/" element={isTeacher ? <TeacherDashboard /> : <AdminDashboard />} />
+        <Route path="/" element={isSuperAdmin ? <SuperAdminDashboard /> : isTeacher ? <TeacherDashboard /> : <AdminDashboard />} />
+        {isSuperAdmin && (
+          <Route path="/schools" element={<SuperAdminDashboard />} />
+        )}
         <Route path="/announcements" element={<AnnouncementsPage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/settings" element={<SettingsPage />} />

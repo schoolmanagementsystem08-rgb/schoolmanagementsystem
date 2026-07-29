@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, BookOpen, Calendar, GraduationCap, FileText,
   CreditCard, Bell, MessageSquare, Settings, Menu, LogOut, ChevronRight,
   ClipboardList, Shield, Bus, Truck, Library, PiggyBank, Timer, PencilLine,
-  Archive, Award, Activity, AlertTriangle,
+  Archive, Award, Activity, AlertTriangle, Building2, Globe,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,7 +31,14 @@ const sidebarSections: SidebarSection[] = [
   {
     title: 'Overview',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', href: '/', roles: ['admin', 'developer', 'teacher', 'student', 'parent'] },
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/', roles: ['admin', 'developer', 'teacher', 'student', 'parent', 'superadmin'] },
+    ],
+  },
+  {
+    title: 'Super Admin',
+    items: [
+      { icon: Building2, label: 'Schools', href: '/schools', roles: ['superadmin'] },
+      { icon: Globe, label: 'All Announcements', href: '/announcements', roles: ['superadmin'] },
     ],
   },
   {

@@ -216,6 +216,7 @@ export const messages = pgTable('messages', {
   receiverId: integer('receiver_id').notNull(),
   body: text('body').notNull(),
   read: boolean('read').default(false),
+  schoolId: integer('school_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

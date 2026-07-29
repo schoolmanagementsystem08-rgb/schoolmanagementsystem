@@ -2,9 +2,10 @@ import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { db } from '../db';
-import { users, teachers } from '../db/schema';
+import { users, teachers, schools } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { rateLimit } from '../middleware/rateLimit';
+import { authenticate } from '../middleware/auth';
 
 const supabase = createClient(env.SUPABASE_URL || '', env.SUPABASE_ANON_KEY || '');
 const supabaseAdmin = env.SUPABASE_SERVICE_ROLE_KEY
@@ -187,6 +188,69 @@ router.post('/make-me-admin', async (req, res) => {
   } catch (error: any) {
     console.error('[Auth /make-me-admin] Error:', error?.message);
     res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// ── Super admin: school management ──
+router.get('/schools', authenticate, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role !== 'superadmin') return res.status(403).json({ error: 'Super admin only' });
+    const result = await db.select().from(schools).orderBy(schools.name);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/schools', authenticate, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role !== 'superadmin') return res.status(403).json({ error: 'Super admin only' });
+    const { name, slug, domain, address, logo } = req.body;
+    if (!name || !slug) return res.status(400).json({ error: 'Name and slug required' });
+    const [existing] = await db.select().from(schools).where(eq(schools.slug, slug)).limit(1);
+    if (existing) return res.status(409).json({ error: 'School slug already taken' });
+    const [created] = await db.insert(schools).values({ name, slug, domain, address, logo }).returning();
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/schools/:id', authenticate, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role !== 'superadmin') return res.status(403).json({ error: 'Super admin only' });
+    const { id } = req.params;
+    const { name, domain, address, logo, status } = req.body;
+    const [updated] = await db.update(schools).set({ ...(name && { name }), ...(domain && { domain }), ...(address && { address }), ...(logo && { logo }), ...(status && { status }) }).where(eq(schools.id, parseInt(id))).returning();
+    if (!updated) return res.status(404).json({ error: 'School not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── Super admin: cross-school stats ──
+router.get('/super-admin/stats', authenticate, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    if (!user || user.role !== 'superadmin') return res.status(403).json({ error: 'Super admin only' });
+    const { totalSchools, totalUsers, totalStudents, totalTeachers, totalClasses } = await import('../db').then(async ({ db: db2 }) => {
+      const [counts] = await db2.execute(await import('drizzle-orm').then(m => m.sql`
+        SELECT
+          (SELECT COUNT(*) FROM schools) as "totalSchools",
+          (SELECT COUNT(*) FROM users) as "totalUsers",
+          (SELECT COUNT(*) FROM students) as "totalStudents",
+          (SELECT COUNT(*) FROM teachers) as "totalTeachers",
+          (SELECT COUNT(*) FROM classes) as "totalClasses"
+      `));
+      return counts.rows[0];
+    });
+    res.json({ totalSchools, totalUsers, totalStudents, totalTeachers, totalClasses });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

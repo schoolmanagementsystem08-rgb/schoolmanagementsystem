@@ -1,18 +1,25 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { timetable, classes, subjects, teachers, users } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId, teacherId, dayOfWeek } = req.query;
     const filters: any[] = [];
     if (classId) filters.push(eq(timetable.classId, Number(classId)));
     if (teacherId) filters.push(eq(timetable.teacherId, Number(teacherId)));
     if (dayOfWeek) filters.push(eq(timetable.dayOfWeek, Number(dayOfWeek)));
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      filters.push(inArray(timetable.classId, schoolClassIds));
+    }
 
     const rows = await db
       .select({
@@ -47,7 +54,13 @@ router.get('/', async (req, res) => {
 
 router.get('/:classId', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId } = req.params;
+    const filters: any[] = [eq(timetable.classId, Number(classId))];
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      filters.push(inArray(timetable.classId, schoolClassIds));
+    }
     const rows = await db
       .select({
         id: timetable.id,
@@ -68,7 +81,7 @@ router.get('/:classId', async (req, res) => {
       .leftJoin(subjects, eq(timetable.subjectId, subjects.id))
       .leftJoin(teachers, eq(timetable.teacherId, teachers.id))
       .leftJoin(users, eq(teachers.userId, users.id))
-      .where(eq(timetable.classId, Number(classId)))
+      .where(and(...filters))
       .orderBy(timetable.dayOfWeek, timetable.startTime);
     res.json(rows);
   } catch (error: any) {
@@ -79,9 +92,14 @@ router.get('/:classId', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room, term } = req.body;
     if (classId == null || subjectId == null || teacherId == null || dayOfWeek == null || !startTime || !endTime) {
       return res.status(400).json({ error: 'classId, subjectId, teacherId, dayOfWeek, startTime, endTime are required' });
+    }
+    if (schoolId) {
+      const [classInfo] = await db.select().from(classes).where(and(eq(classes.id, classId), eq(classes.schoolId, schoolId))).limit(1);
+      if (!classInfo) return res.status(403).json({ error: 'Class does not belong to your school' });
     }
     const [subject] = await db.select({ classId: subjects.classId, teacherId: subjects.teacherId }).from(subjects).where(eq(subjects.id, subjectId)).limit(1);
     if (!subject) return res.status(400).json({ error: 'Subject not found' });
@@ -97,9 +115,15 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
     const { classId, subjectId, teacherId, dayOfWeek, startTime, endTime, room, term } = req.body;
-    const [existing] = await db.select().from(timetable).where(eq(timetable.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(timetable.id, Number(id))];
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      findConditions.push(inArray(timetable.classId, schoolClassIds));
+    }
+    const [existing] = await db.select().from(timetable).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Timetable entry not found' });
 
     const effClassId = classId ?? existing.classId;
@@ -145,8 +169,14 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(timetable).where(eq(timetable.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(timetable.id, Number(id))];
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      findConditions.push(inArray(timetable.classId, schoolClassIds));
+    }
+    const [existing] = await db.select().from(timetable).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Timetable entry not found' });
     await softDelete('timetable', Number(id));
     res.json({ message: 'Timetable entry deleted. Backup retained for 30 days.' });

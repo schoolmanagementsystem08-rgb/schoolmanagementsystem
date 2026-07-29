@@ -1,17 +1,25 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { feePayments, feeStructures, students, users } from '../db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { feePayments, feeStructures, classes, students, users } from '../db/schema';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { studentId, structureId } = req.query;
-    const conditions = [];
+    const conditions: any[] = [];
     if (studentId) conditions.push(eq(feePayments.studentId, Number(studentId)));
     if (structureId) conditions.push(eq(feePayments.structureId, Number(structureId)));
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      conditions.push(inArray(feePayments.studentId, schoolStudentIds));
+    }
 
     let query = db
       .select({
@@ -45,9 +53,15 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { studentId, structureId, amount, paymentDate, paymentMethod, referenceNo, notes, recordedBy } = req.body;
     if (!studentId || !structureId || !amount) {
       return res.status(400).json({ error: 'studentId, structureId, and amount are required' });
+    }
+
+    if (schoolId) {
+      const [student] = await db.select({ id: students.id }).from(students).leftJoin(users, eq(students.userId, users.id)).where(and(eq(students.id, Number(studentId)), eq(users.schoolId, schoolId))).limit(1);
+      if (!student) return res.status(403).json({ error: 'Student does not belong to your school' });
     }
 
     const [structure] = await db.select().from(feeStructures).where(eq(feeStructures.id, Number(structureId))).limit(1);
@@ -75,9 +89,16 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
     const { amount, paymentDate, paymentMethod, referenceNo, notes } = req.body;
-    const [existing] = await db.select().from(feePayments).where(eq(feePayments.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(feePayments.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      findConditions.push(inArray(feePayments.studentId, schoolStudentIds));
+    }
+    const [existing] = await db.select().from(feePayments).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Payment not found' });
 
     await db
@@ -100,8 +121,15 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(feePayments).where(eq(feePayments.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(feePayments.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      findConditions.push(inArray(feePayments.studentId, schoolStudentIds));
+    }
+    const [existing] = await db.select().from(feePayments).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Payment not found' });
     await softDelete('fee_payments', Number(id));
     res.json({ message: 'Payment deleted' });

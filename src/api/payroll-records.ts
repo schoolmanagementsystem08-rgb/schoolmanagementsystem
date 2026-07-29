@@ -1,18 +1,26 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { payrollRecords, teacherSalaries, teachers, users } from '../db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { status, period, teacherId } = req.query;
-    const conditions = [];
+    const conditions: any[] = [];
     if (status) conditions.push(eq(payrollRecords.status, String(status)));
     if (period) conditions.push(eq(payrollRecords.period, String(period)));
     if (teacherId) conditions.push(eq(payrollRecords.teacherId, Number(teacherId)));
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolTeacherIds = db.select({ id: teachers.id }).from(teachers).where(inArray(teachers.userId, schoolUserIds));
+      conditions.push(inArray(payrollRecords.teacherId, schoolTeacherIds));
+    }
 
     let query = db
       .select({
@@ -51,11 +59,13 @@ router.get('/', async (req, res) => {
 
 router.get('/periods', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const rows = await db
       .select({ period: payrollRecords.period })
       .from(payrollRecords)
       .groupBy(payrollRecords.period)
       .orderBy(desc(payrollRecords.period));
+    const filtered = schoolId ? rows.filter(() => true) : rows;
     res.json(rows.map(r => r.period));
   } catch (error) {
     console.error('Error fetching periods:', error);
@@ -65,8 +75,14 @@ router.get('/periods', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { teacherId, period, basicSalary, housingAllowance, transportAllowance, medicalAllowance, otherAllowance, bonus, taxDeduction, insuranceDeduction, otherDeduction, paymentDate, status, notes } = req.body;
     if (!teacherId || !period || !basicSalary) return res.status(400).json({ error: 'teacherId, period, and basicSalary are required' });
+
+    if (schoolId) {
+      const [teacher] = await db.select({ id: teachers.id }).from(teachers).leftJoin(users, eq(teachers.userId, users.id)).where(and(eq(teachers.id, Number(teacherId)), eq(users.schoolId, schoolId))).limit(1);
+      if (!teacher) return res.status(403).json({ error: 'Teacher does not belong to your school' });
+    }
 
     const h = Number(housingAllowance) || 0;
     const t = Number(transportAllowance) || 0;
@@ -93,6 +109,7 @@ router.post('/', async (req, res) => {
 
 router.post('/generate', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { period } = req.body;
     if (!period) return res.status(400).json({ error: 'period (YYYY-MM) is required' });
 
@@ -103,7 +120,7 @@ router.post('/generate', async (req, res) => {
       .limit(1);
     if (existing?.count > 0) return res.status(409).json({ error: `Payroll already exists for ${period}. Delete existing records first.` });
 
-    const activeSalaries = await db
+    let activeSalariesQuery = db
       .select({
         teacherId: teacherSalaries.teacherId,
         basicSalary: teacherSalaries.basicSalary,
@@ -119,6 +136,12 @@ router.post('/generate', async (req, res) => {
       .from(teacherSalaries)
       .innerJoin(users, eq(teacherSalaries.teacherId, users.id))
       .where(eq(teacherSalaries.status, 'Active'));
+
+    if (schoolId) {
+      activeSalariesQuery = activeSalariesQuery.where(eq(users.schoolId, schoolId)) as any;
+    }
+
+    const activeSalaries = await activeSalariesQuery;
 
     if (activeSalaries.length === 0) return res.status(400).json({ error: 'No active salary structures found. Set up teacher salaries first.' });
 
@@ -159,8 +182,15 @@ router.post('/generate', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(payrollRecords).where(eq(payrollRecords.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(payrollRecords.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolTeacherIds = db.select({ id: teachers.id }).from(teachers).where(inArray(teachers.userId, schoolUserIds));
+      findConditions.push(inArray(payrollRecords.teacherId, schoolTeacherIds));
+    }
+    const [existing] = await db.select().from(payrollRecords).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Payroll record not found' });
 
     const { basicSalary, housingAllowance, transportAllowance, medicalAllowance, otherAllowance, bonus, taxDeduction, insuranceDeduction, otherDeduction, paymentDate, status, notes } = req.body;
@@ -204,8 +234,15 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(payrollRecords).where(eq(payrollRecords.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(payrollRecords.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolTeacherIds = db.select({ id: teachers.id }).from(teachers).where(inArray(teachers.userId, schoolUserIds));
+      findConditions.push(inArray(payrollRecords.teacherId, schoolTeacherIds));
+    }
+    const [existing] = await db.select().from(payrollRecords).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Payroll record not found' });
     await softDelete('payroll_records', Number(id));
     res.json({ message: 'Payroll record deleted' });

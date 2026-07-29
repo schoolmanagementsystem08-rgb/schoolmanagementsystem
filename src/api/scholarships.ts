@@ -1,18 +1,26 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { scholarships, students, users, classes } from '../db/schema';
-import { eq, and, like } from 'drizzle-orm';
+import { eq, and, inArray, like } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { status, studentId, search } = req.query;
-    const conditions = [];
+    const conditions: any[] = [];
 
     if (status) conditions.push(eq(scholarships.status, String(status)));
     if (studentId) conditions.push(eq(scholarships.studentId, Number(studentId)));
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      conditions.push(inArray(scholarships.studentId, schoolStudentIds));
+    }
 
     let query = db
       .select({
@@ -52,7 +60,14 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
+    const findConditions: any[] = [eq(scholarships.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      findConditions.push(inArray(scholarships.studentId, schoolStudentIds));
+    }
     const [record] = await db
       .select({
         id: scholarships.id,
@@ -75,7 +90,7 @@ router.get('/:id', async (req, res) => {
       .leftJoin(students, eq(scholarships.studentId, students.id))
       .leftJoin(users, eq(students.userId, users.id))
       .leftJoin(classes, eq(students.classId, classes.id))
-      .where(eq(scholarships.id, Number(id)))
+      .where(and(...findConditions))
       .limit(1);
 
     if (!record) return res.status(404).json({ error: 'Scholarship not found' });
@@ -88,9 +103,14 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { studentId, scholarshipName, type, discountPercentage, amount, startDate, endDate, status, notes, approvedBy } = req.body;
     if (!studentId || !scholarshipName || !type || discountPercentage === undefined || !startDate) {
       return res.status(400).json({ error: 'studentId, scholarshipName, type, discountPercentage, and startDate are required' });
+    }
+    if (schoolId) {
+      const [student] = await db.select({ id: students.id }).from(students).leftJoin(users, eq(students.userId, users.id)).where(and(eq(students.id, Number(studentId)), eq(users.schoolId, schoolId))).limit(1);
+      if (!student) return res.status(403).json({ error: 'Student does not belong to your school' });
     }
     const [created] = await db
       .insert(scholarships)
@@ -116,9 +136,16 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
     const { studentId, scholarshipName, type, discountPercentage, amount, startDate, endDate, status, notes, approvedBy } = req.body;
-    const [existing] = await db.select().from(scholarships).where(eq(scholarships.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(scholarships.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      findConditions.push(inArray(scholarships.studentId, schoolStudentIds));
+    }
+    const [existing] = await db.select().from(scholarships).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Scholarship not found' });
 
     await db
@@ -146,8 +173,15 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(scholarships).where(eq(scholarships.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(scholarships.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      findConditions.push(inArray(scholarships.studentId, schoolStudentIds));
+    }
+    const [existing] = await db.select().from(scholarships).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Scholarship not found' });
     await softDelete('scholarships', Number(id));
     res.json({ message: 'Scholarship deleted. Backup retained for 30 days.' });

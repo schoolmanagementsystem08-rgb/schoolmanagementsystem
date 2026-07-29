@@ -23,7 +23,7 @@ export async function initializeDatabase() {
           "school_id" integer,
           "created_at" timestamp DEFAULT now() NOT NULL
         );
-        CREATE TABLE IF NOT EXISTS "schools" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "address" text, "admin_id" integer, "settings" jsonb);
+        CREATE TABLE IF NOT EXISTS "schools" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "slug" text UNIQUE, "domain" text, "address" text, "logo" text, "admin_id" integer, "status" text DEFAULT 'active' NOT NULL, "settings" jsonb, "created_at" timestamp DEFAULT now() NOT NULL);
         CREATE TABLE IF NOT EXISTS "classes" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "school_id" integer NOT NULL, "teacher_id" integer, "academic_year" text NOT NULL);
         CREATE TABLE IF NOT EXISTS "students" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer NOT NULL, "class_id" integer NOT NULL, "student_id" text, "gender" text, "enrollment_date" timestamp DEFAULT now() NOT NULL, "guardian_id" integer, "status" text DEFAULT 'Active' NOT NULL);
         CREATE TABLE IF NOT EXISTS "guardians" ("id" serial PRIMARY KEY NOT NULL, "name" text NOT NULL, "phone" text, "email" text, "address" text, "relationship" text, "created_at" timestamp DEFAULT now() NOT NULL);
@@ -72,6 +72,11 @@ CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs (timestamp);
 CREATE INDEX IF NOT EXISTS idx_teacher_salaries_teacher ON teacher_salaries (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_payroll_records_teacher ON payroll_records (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records (period);
+CREATE INDEX IF NOT EXISTS idx_schools_slug ON schools (slug);
+CREATE INDEX IF NOT EXISTS idx_schools_domain ON schools (domain);
+CREATE INDEX IF NOT EXISTS idx_users_school_id ON users (school_id);
+CREATE INDEX IF NOT EXISTS idx_students_school_id ON students (school_id);
+CREATE INDEX IF NOT EXISTS idx_teachers_school_id ON teachers (school_id);
       `);
 
       await client.query(`
@@ -98,6 +103,126 @@ CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records (period
         DO $$ BEGIN
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teachers' AND column_name='portal_access') THEN
             ALTER TABLE "teachers" ADD COLUMN "portal_access" text DEFAULT 'full';
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='slug') THEN
+            ALTER TABLE "schools" ADD COLUMN "slug" text;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='domain') THEN
+            ALTER TABLE "schools" ADD COLUMN "domain" text;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='logo') THEN
+            ALTER TABLE "schools" ADD COLUMN "logo" text;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='status') THEN
+            ALTER TABLE "schools" ADD COLUMN "status" text DEFAULT 'active';
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='schools' AND column_name='created_at') THEN
+            ALTER TABLE "schools" ADD COLUMN "created_at" timestamp DEFAULT now();
+          END IF;
+        END $$;
+
+        -- Add school_id columns to tables that need direct school filtering
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='school_id') THEN
+            ALTER TABLE "students" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teachers' AND column_name='school_id') THEN
+            ALTER TABLE "teachers" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='guardians' AND column_name='school_id') THEN
+            ALTER TABLE "guardians" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subjects' AND column_name='school_id') THEN
+            ALTER TABLE "subjects" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='attendance' AND column_name='school_id') THEN
+            ALTER TABLE "attendance" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='grades' AND column_name='school_id') THEN
+            ALTER TABLE "grades" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='assignments' AND column_name='school_id') THEN
+            ALTER TABLE "assignments" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fees' AND column_name='school_id') THEN
+            ALTER TABLE "fees" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fee_structures' AND column_name='school_id') THEN
+            ALTER TABLE "fee_structures" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='fee_payments' AND column_name='school_id') THEN
+            ALTER TABLE "fee_payments" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='timetable' AND column_name='school_id') THEN
+            ALTER TABLE "timetable" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='scholarships' AND column_name='school_id') THEN
+            ALTER TABLE "scholarships" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teacher_salaries' AND column_name='school_id') THEN
+            ALTER TABLE "teacher_salaries" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payroll_records' AND column_name='school_id') THEN
+            ALTER TABLE "payroll_records" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activity_logs' AND column_name='school_id') THEN
+            ALTER TABLE "activity_logs" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='error_logs' AND column_name='school_id') THEN
+            ALTER TABLE "error_logs" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='leave_requests' AND column_name='school_id') THEN
+            ALTER TABLE "leave_requests" ADD COLUMN "school_id" integer;
+          END IF;
+        END $$;
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='qualifications' AND column_name='school_id') THEN
+            ALTER TABLE "qualifications" ADD COLUMN "school_id" integer;
           END IF;
         END $$;
       `);

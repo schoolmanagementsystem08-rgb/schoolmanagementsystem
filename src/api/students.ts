@@ -2,13 +2,16 @@ import { Router } from 'express';
 import { randomUUID } from 'crypto';
 import { db } from '../db';
 import { students, users, classes, guardians, fees, teachers } from '../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const result = await db.execute(sql`
       SELECT
         s.id, s.student_id as "studentId", u.name, u.email, s.gender,
@@ -30,6 +33,7 @@ router.get('/', async (req, res) => {
           SUM(CASE WHEN status = 'Paid' THEN amount ELSE 0 END) as balance
         FROM fees GROUP BY student_id
       ) f ON s.id = f.student_id
+      ${schoolId ? sql`WHERE u.school_id = ${schoolId}` : sql``}
     `);
     res.json(result.rows);
   } catch (error) {
@@ -40,7 +44,13 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
+    const findConditions: any[] = [eq(students.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(students.userId, schoolUserIds));
+    }
     const student = await db
       .select({
         id: students.id,
@@ -67,7 +77,7 @@ router.get('/:id', async (req, res) => {
       .leftJoin(users, eq(students.userId, users.id))
       .leftJoin(classes, eq(students.classId, classes.id))
       .leftJoin(guardians, eq(students.guardianId, guardians.id))
-      .where(eq(students.id, Number(id)))
+      .where(and(...findConditions))
       .limit(1);
     if (student.length === 0) return res.status(404).json({ error: 'Student not found' });
     res.json(student[0]);
@@ -89,9 +99,15 @@ async function generateStudentId(classId: number): Promise<string> {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { name, email, classId, gender, status, guardian } = req.body;
     if (!name || !email || !classId) {
       return res.status(400).json({ error: 'Name, email, and class are required' });
+    }
+
+    if (schoolId) {
+      const [classInfo] = await db.select().from(classes).where(and(eq(classes.id, Number(classId)), eq(classes.schoolId, schoolId))).limit(1);
+      if (!classInfo) return res.status(403).json({ error: 'Class does not belong to your school' });
     }
 
     let guardianId: number | null = null;
@@ -118,6 +134,7 @@ router.post('/', async (req, res) => {
       name,
       email,
       role: 'student',
+      schoolId: schoolId ?? null,
     }).returning();
 
     const studentId = await generateStudentId(Number(classId));
@@ -156,10 +173,16 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
     const { name, email, classId, gender, status, guardian } = req.body;
 
-    const [existing] = await db.select({ userId: students.userId, classId: students.classId }).from(students).where(eq(students.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(students.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(students.userId, schoolUserIds));
+    }
+    const [existing] = await db.select({ userId: students.userId, classId: students.classId }).from(students).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Student not found' });
 
     if (name || email) {
@@ -229,8 +252,14 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select({ userId: students.userId, name: users.name, email: users.email }).from(students).leftJoin(users, eq(students.userId, users.id)).where(eq(students.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(students.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(students.userId, schoolUserIds));
+    }
+    const [existing] = await db.select({ userId: students.userId, name: users.name, email: users.email }).from(students).leftJoin(users, eq(students.userId, users.id)).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Student not found' });
     await softDelete('students', Number(id), { deletedUserName: existing.name, deletedUserEmail: existing.email });
     await softDelete('users', existing.userId);
@@ -243,7 +272,15 @@ router.delete('/:id', async (req, res) => {
 
 router.get('/:id/fees', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
+    const findConditions: any[] = [eq(students.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(students.userId, schoolUserIds));
+    }
+    const [student] = await db.select({ id: students.id }).from(students).leftJoin(users, eq(students.userId, users.id)).where(and(...findConditions)).limit(1);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
     const feeRecords = await db.select().from(fees).where(eq(fees.studentId, Number(id))).orderBy(fees.dueDate);
     res.json(feeRecords);
   } catch (error) {

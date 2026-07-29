@@ -1,16 +1,24 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { teacherSalaries, teachers, users } from '../db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { status } = req.query;
-    const conditions = [];
+    const conditions: any[] = [];
     if (status) conditions.push(eq(teacherSalaries.status, String(status)));
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolTeacherIds = db.select({ id: teachers.id }).from(teachers).where(inArray(teachers.userId, schoolUserIds));
+      conditions.push(inArray(teacherSalaries.teacherId, schoolTeacherIds));
+    }
 
     let query = db
       .select({
@@ -45,8 +53,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { teacherId, basicSalary, housingAllowance, transportAllowance, medicalAllowance, otherAllowance, taxDeduction, insuranceDeduction, otherDeduction, effectiveDate } = req.body;
     if (!teacherId || !basicSalary) return res.status(400).json({ error: 'teacherId and basicSalary are required' });
+
+    if (schoolId) {
+      const [teacher] = await db.select({ id: teachers.id }).from(teachers).leftJoin(users, eq(teachers.userId, users.id)).where(and(eq(teachers.id, Number(teacherId)), eq(users.schoolId, schoolId))).limit(1);
+      if (!teacher) return res.status(403).json({ error: 'Teacher does not belong to your school' });
+    }
 
     const [existing] = await db
       .select().from(teacherSalaries)
@@ -78,8 +92,15 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(teacherSalaries).where(eq(teacherSalaries.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(teacherSalaries.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolTeacherIds = db.select({ id: teachers.id }).from(teachers).where(inArray(teachers.userId, schoolUserIds));
+      findConditions.push(inArray(teacherSalaries.teacherId, schoolTeacherIds));
+    }
+    const [existing] = await db.select().from(teacherSalaries).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Salary record not found' });
 
     const { basicSalary, housingAllowance, transportAllowance, medicalAllowance, otherAllowance, taxDeduction, insuranceDeduction, otherDeduction, effectiveDate, status } = req.body;
@@ -108,8 +129,15 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(teacherSalaries).where(eq(teacherSalaries.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(teacherSalaries.id, Number(id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolTeacherIds = db.select({ id: teachers.id }).from(teachers).where(inArray(teachers.userId, schoolUserIds));
+      findConditions.push(inArray(teacherSalaries.teacherId, schoolTeacherIds));
+    }
+    const [existing] = await db.select().from(teacherSalaries).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Salary record not found' });
     await softDelete('teacher_salaries', Number(id));
     res.json({ message: 'Salary record deleted' });

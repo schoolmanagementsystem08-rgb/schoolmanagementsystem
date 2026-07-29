@@ -1,13 +1,21 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { assignments, subjects } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { assignments, subjects, classes } from '../db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const conditions: any[] = [];
+    if (schoolId) {
+      const schoolSubjectIds = db.select({ id: subjects.id }).from(subjects).innerJoin(classes, eq(subjects.classId, classes.id)).where(eq(classes.schoolId, schoolId));
+      conditions.push(inArray(assignments.subjectId, schoolSubjectIds));
+    }
     const all = await db
       .select({
         id: assignments.id,
@@ -18,7 +26,8 @@ router.get('/', async (req, res) => {
         description: assignments.description,
       })
       .from(assignments)
-      .leftJoin(subjects, eq(assignments.subjectId, subjects.id));
+      .leftJoin(subjects, eq(assignments.subjectId, subjects.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
     res.json(all);
   } catch (error) {
     console.error('Error fetching assignments:', error);
@@ -28,6 +37,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { title, subjectId, dueDate, description } = req.body;
     if (!title || !subjectId || !dueDate) {
       return res.status(400).json({ error: 'title, subjectId, and dueDate are required' });
@@ -45,9 +55,15 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
     const { title, subjectId, dueDate, description } = req.body;
-    const [existing] = await db.select().from(assignments).where(eq(assignments.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(assignments.id, Number(id))];
+    if (schoolId) {
+      const schoolSubjectIds = db.select({ id: subjects.id }).from(subjects).innerJoin(classes, eq(subjects.classId, classes.id)).where(eq(classes.schoolId, schoolId));
+      findConditions.push(inArray(assignments.subjectId, schoolSubjectIds));
+    }
+    const [existing] = await db.select().from(assignments).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Assignment not found' });
 
     await db
@@ -69,8 +85,14 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(assignments).where(eq(assignments.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(assignments.id, Number(id))];
+    if (schoolId) {
+      const schoolSubjectIds = db.select({ id: subjects.id }).from(subjects).innerJoin(classes, eq(subjects.classId, classes.id)).where(eq(classes.schoolId, schoolId));
+      findConditions.push(inArray(assignments.subjectId, schoolSubjectIds));
+    }
+    const [existing] = await db.select().from(assignments).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Assignment not found' });
     await softDelete('assignments', Number(id));
     res.json({ message: 'Assignment deleted. Backup retained for 30 days.' });

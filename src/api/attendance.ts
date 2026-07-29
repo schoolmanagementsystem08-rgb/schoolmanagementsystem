@@ -1,16 +1,24 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { attendance, students, users, classes } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId, date } = req.query;
-    const conditions = [];
+    const conditions: any[] = [];
     if (classId) conditions.push(eq(attendance.studentId, students.id));
     if (date) conditions.push(eq(attendance.date, new Date(date as string)));
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+      conditions.push(inArray(attendance.studentId, schoolStudentIds));
+    }
 
     const records = await db
       .select({
@@ -23,7 +31,8 @@ router.get('/', async (req, res) => {
       })
       .from(attendance)
       .leftJoin(students, eq(attendance.studentId, students.id))
-      .leftJoin(users, eq(students.userId, users.id));
+      .leftJoin(users, eq(students.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     res.json(records);
   } catch (error) {
@@ -34,9 +43,15 @@ router.get('/', async (req, res) => {
 
 router.get('/class/:classId', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId } = req.params;
     const { date } = req.query;
 
+    const studentConditions: any[] = [eq(students.classId, Number(classId))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      studentConditions.push(inArray(students.userId, schoolUserIds));
+    }
     const classStudents = await db
       .select({
         id: students.id,
@@ -45,18 +60,20 @@ router.get('/class/:classId', async (req, res) => {
       })
       .from(students)
       .leftJoin(users, eq(students.userId, users.id))
-      .where(eq(students.classId, Number(classId)));
+      .where(and(...studentConditions));
 
     let records: Record<number, string> = {};
     if (date) {
+      const attendanceConditions: any[] = [eq(attendance.date, new Date(date as string))];
+      if (schoolId) {
+        const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+        const schoolStudentIds = db.select({ id: students.id }).from(students).where(inArray(students.userId, schoolUserIds));
+        attendanceConditions.push(inArray(attendance.studentId, schoolStudentIds));
+      }
       const rows = await db
         .select()
         .from(attendance)
-        .where(
-          and(
-            eq(attendance.date, new Date(date as string)),
-          )
-        );
+        .where(and(...attendanceConditions));
       rows.forEach(r => {
         records[r.studentId] = r.status;
       });
@@ -71,9 +88,15 @@ router.get('/class/:classId', async (req, res) => {
 
 router.post('/batch', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId, date, records } = req.body;
     if (!classId || !date || !records) {
       return res.status(400).json({ error: 'classId, date, and records are required' });
+    }
+
+    if (schoolId) {
+      const [classInfo] = await db.select().from(classes).where(and(eq(classes.id, Number(classId)), eq(classes.schoolId, schoolId))).limit(1);
+      if (!classInfo) return res.status(403).json({ error: 'Class does not belong to your school' });
     }
 
     const recordDate = new Date(date);

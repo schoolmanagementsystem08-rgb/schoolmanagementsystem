@@ -1,18 +1,25 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { feeStructures, feePayments, classes, students, users } from '../db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId, academicYear, term } = req.query;
-    const conditions = [];
+    const conditions: any[] = [];
     if (classId) conditions.push(eq(feeStructures.classId, Number(classId)));
     if (academicYear) conditions.push(eq(feeStructures.academicYear, String(academicYear)));
     if (term) conditions.push(eq(feeStructures.term, String(term)));
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      conditions.push(inArray(feeStructures.classId, schoolClassIds));
+    }
 
     let query = db
       .select({
@@ -41,7 +48,13 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
+    const findConditions: any[] = [eq(feeStructures.id, Number(id))];
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      findConditions.push(inArray(feeStructures.classId, schoolClassIds));
+    }
     const [structure] = await db
       .select({
         id: feeStructures.id,
@@ -56,7 +69,7 @@ router.get('/:id', async (req, res) => {
       })
       .from(feeStructures)
       .leftJoin(classes, eq(feeStructures.classId, classes.id))
-      .where(eq(feeStructures.id, Number(id)))
+      .where(and(...findConditions))
       .limit(1);
     if (!structure) return res.status(404).json({ error: 'Fee structure not found' });
 
@@ -100,9 +113,14 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId, academicYear, term, totalAmount, description, dueDate } = req.body;
     if (!classId || !academicYear || !term || !totalAmount) {
       return res.status(400).json({ error: 'classId, academicYear, term, and totalAmount are required' });
+    }
+    if (schoolId) {
+      const [classInfo] = await db.select().from(classes).where(and(eq(classes.id, Number(classId)), eq(classes.schoolId, schoolId))).limit(1);
+      if (!classInfo) return res.status(403).json({ error: 'Class does not belong to your school' });
     }
     const [existing] = await db
       .select()
@@ -124,9 +142,15 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
     const { totalAmount, description, dueDate } = req.body;
-    const [existing] = await db.select().from(feeStructures).where(eq(feeStructures.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(feeStructures.id, Number(id))];
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      findConditions.push(inArray(feeStructures.classId, schoolClassIds));
+    }
+    const [existing] = await db.select().from(feeStructures).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Fee structure not found' });
 
     await db
@@ -147,8 +171,14 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(feeStructures).where(eq(feeStructures.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(feeStructures.id, Number(id))];
+    if (schoolId) {
+      const schoolClassIds = db.select({ id: classes.id }).from(classes).where(eq(classes.schoolId, schoolId));
+      findConditions.push(inArray(feeStructures.classId, schoolClassIds));
+    }
+    const [existing] = await db.select().from(feeStructures).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Fee structure not found' });
     await db.delete(feePayments).where(eq(feePayments.structureId, Number(id)));
     await softDelete('fee_structures', Number(id));

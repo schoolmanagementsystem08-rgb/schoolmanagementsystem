@@ -7,9 +7,11 @@ import { teachers, classes, subjects, students, users, attendance, grades, quali
 import { softDelete } from '../lib/soft-delete';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { authenticate } from '../middleware/auth.ts';
 
 const supabase = createClient(env.SUPABASE_URL || '', env.SUPABASE_ANON_KEY || '');
 const router = Router();
+router.use(authenticate);
 
 async function getTeacherIdFromAuth(authHeader: string | undefined) {
   if (!authHeader?.startsWith('Bearer ')) {
@@ -148,7 +150,7 @@ router.get('/me/attendance', async (req, res) => {
     const teacherClasses = await db.select({ id: classes.id, name: classes.name }).from(classes).where(eq(classes.teacherId, teacherId));
     if (teacherClasses.length === 0) return res.json([]);
     const classIds = teacherClasses.map(c => c.id);
-    const conditions = [inArray(attendance.studentId,
+    const conditions: any[] = [inArray(attendance.studentId,
       db.select({ id: students.id }).from(students).where(inArray(students.classId, classIds))
     )];
     if (date) conditions.push(eq(attendance.date, new Date(date as string)));
@@ -165,10 +167,16 @@ router.get('/me/attendance', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const findConditions: any[] = [eq(teachers.id, Number(req.params.id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
     const [teacher] = await db
       .select({ id: teachers.id, name: users.name, email: users.email, employeeId: teachers.employeeId, specialization: teachers.specialization, phone: teachers.phone })
       .from(teachers).leftJoin(users, eq(teachers.userId, users.id))
-      .where(eq(teachers.id, Number(req.params.id))).limit(1);
+      .where(and(...findConditions)).limit(1);
     if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     res.json(teacher);
   } catch (error: any) {
@@ -179,6 +187,14 @@ router.get('/:id', async (req, res) => {
 
 router.get('/:id/classes', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const findConditions: any[] = [eq(teachers.id, Number(req.params.id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
+    const [teacher] = await db.select({ id: teachers.id }).from(teachers).where(and(...findConditions)).limit(1);
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     const teacherClasses = await db.select().from(classes).where(eq(classes.teacherId, Number(req.params.id)));
     res.json(teacherClasses);
   } catch (error: any) {
@@ -189,6 +205,14 @@ router.get('/:id/classes', async (req, res) => {
 
 router.get('/:id/subjects', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const findConditions: any[] = [eq(teachers.id, Number(req.params.id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
+    const [teacher] = await db.select({ id: teachers.id }).from(teachers).where(and(...findConditions)).limit(1);
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     const teacherSubjects = await db
       .select({ id: subjects.id, name: subjects.name, classId: subjects.classId, className: classes.name })
       .from(subjects).leftJoin(classes, eq(subjects.classId, classes.id))
@@ -202,6 +226,14 @@ router.get('/:id/subjects', async (req, res) => {
 
 router.get('/:id/students', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const findConditions: any[] = [eq(teachers.id, Number(req.params.id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
+    const [teacher] = await db.select({ id: teachers.id }).from(teachers).where(and(...findConditions)).limit(1);
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     const teacherClasses = await db.select({ id: classes.id }).from(classes).where(eq(classes.teacherId, Number(req.params.id)));
     if (teacherClasses.length === 0) return res.json([]);
     const classIds = teacherClasses.map(c => c.id);
@@ -218,6 +250,14 @@ router.get('/:id/students', async (req, res) => {
 
 router.get('/:id/grades', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const findConditions: any[] = [eq(teachers.id, Number(req.params.id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
+    const [teacher] = await db.select({ id: teachers.id }).from(teachers).where(and(...findConditions)).limit(1);
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     const teacherSubjects = await db.select({ id: subjects.id }).from(subjects).where(eq(subjects.teacherId, Number(req.params.id)));
     if (teacherSubjects.length === 0) return res.json([]);
     const subjectIds = teacherSubjects.map(s => s.id);
@@ -234,11 +274,19 @@ router.get('/:id/grades', async (req, res) => {
 
 router.get('/:id/attendance', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const findConditions: any[] = [eq(teachers.id, Number(req.params.id))];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
+    const [teacher] = await db.select({ id: teachers.id }).from(teachers).where(and(...findConditions)).limit(1);
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
     const { date } = req.query;
     const teacherClasses = await db.select({ id: classes.id, name: classes.name }).from(classes).where(eq(classes.teacherId, Number(req.params.id)));
     if (teacherClasses.length === 0) return res.json([]);
     const classIds = teacherClasses.map(c => c.id);
-    const conditions = [inArray(attendance.studentId,
+    const conditions: any[] = [inArray(attendance.studentId,
       db.select({ id: students.id }).from(students).where(inArray(students.classId, classIds))
     )];
     if (date) conditions.push(eq(attendance.date, new Date(date as string)));
@@ -255,9 +303,12 @@ router.get('/:id/attendance', async (req, res) => {
 
 router.post('/attendance/report', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { classId, date, records } = req.body;
     if (!classId || !date || !records) return res.status(400).json({ error: 'classId, date, and records are required' });
-    const [classInfo] = await db.select().from(classes).where(eq(classes.id, Number(classId))).limit(1);
+    const classConditions: any[] = [eq(classes.id, Number(classId))];
+    if (schoolId) classConditions.push(eq(classes.schoolId, schoolId));
+    const [classInfo] = await db.select().from(classes).where(and(...classConditions)).limit(1);
     if (!classInfo) return res.status(404).json({ error: 'Class not found' });
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([600, 500]);
@@ -287,6 +338,12 @@ router.post('/attendance/report', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const conditions: any[] = [];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      conditions.push(inArray(teachers.userId, schoolUserIds));
+    }
     const allTeachers = await db
       .select({
         id: teachers.id,
@@ -302,6 +359,7 @@ router.get('/', async (req, res) => {
       })
       .from(teachers)
       .leftJoin(users, eq(teachers.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(users.name);
 
     const teacherIds = allTeachers.map(t => t.id);
@@ -331,6 +389,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { name, email, specialization, phone, employeeId } = req.body;
     if (!name || !email) {
       return res.status(400).json({ error: 'Name and email are required' });
@@ -341,6 +400,7 @@ router.post('/', async (req, res) => {
       name,
       email,
       role: 'teacher',
+      schoolId: schoolId ?? null,
     }).returning();
 
     const [createdTeacher] = await db.insert(teachers).values({
@@ -367,8 +427,14 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const teacherId = Number(req.params.id);
-    const [existing] = await db.select().from(teachers).where(eq(teachers.id, teacherId)).limit(1);
+    const findConditions: any[] = [eq(teachers.id, teacherId)];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
+    const [existing] = await db.select().from(teachers).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Teacher not found' });
 
     const { name, email, specialization, phone, employeeId, status, portalAccess, qualification } = req.body;
@@ -434,8 +500,14 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const teacherId = Number(req.params.id);
-    const [existing] = await db.select({ userId: teachers.userId, name: users.name, email: users.email }).from(teachers).leftJoin(users, eq(teachers.userId, users.id)).where(eq(teachers.id, teacherId)).limit(1);
+    const findConditions: any[] = [eq(teachers.id, teacherId)];
+    if (schoolId) {
+      const schoolUserIds = db.select({ id: users.id }).from(users).where(eq(users.schoolId, schoolId));
+      findConditions.push(inArray(teachers.userId, schoolUserIds));
+    }
+    const [existing] = await db.select({ userId: teachers.userId, name: users.name, email: users.email }).from(teachers).leftJoin(users, eq(teachers.userId, users.id)).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Teacher not found' });
 
     await db.update(classes).set({ teacherId: null }).where(eq(classes.teacherId, teacherId));
@@ -452,7 +524,10 @@ router.delete('/:id', async (req, res) => {
 
 router.get('/:id/classes/available', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const teacherId = Number(req.params.id);
+    const availableConditions: any[] = [sql`${classes.teacherId} IS NULL OR ${classes.teacherId} = ${teacherId}`];
+    if (schoolId) availableConditions.push(eq(classes.schoolId, schoolId));
     const available = await db
       .select({
         id: classes.id,
@@ -461,7 +536,7 @@ router.get('/:id/classes/available', async (req, res) => {
         currentTeacherId: classes.teacherId,
       })
       .from(classes)
-      .where(sql`${classes.teacherId} IS NULL OR ${classes.teacherId} = ${teacherId}`)
+      .where(and(...availableConditions))
       .orderBy(classes.name);
     res.json(available);
   } catch (error: any) {

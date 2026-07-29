@@ -1,13 +1,18 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { classes, teachers, users } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { softDelete } from '../lib/soft-delete';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = Router();
+router.use(authenticate);
 
 router.get('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
+    const conditions: any[] = [];
+    if (schoolId) conditions.push(eq(classes.schoolId, schoolId));
     const allClasses = await db
       .select({
         id: classes.id,
@@ -19,7 +24,8 @@ router.get('/', async (req, res) => {
       })
       .from(classes)
       .leftJoin(teachers, eq(classes.teacherId, teachers.id))
-      .leftJoin(users, eq(teachers.userId, users.id));
+      .leftJoin(users, eq(teachers.userId, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     res.json(allClasses);
   } catch (error) {
@@ -30,13 +36,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { name, academicYear, teacherId } = req.body;
     if (!name || !academicYear) {
       return res.status(400).json({ error: 'Name and academic year are required' });
     }
     const [created] = await db
       .insert(classes)
-      .values({ name, academicYear, schoolId: req.body.schoolId || 1, teacherId: teacherId ? Number(teacherId) : null })
+      .values({ name, academicYear, schoolId: schoolId ?? req.body.schoolId, teacherId: teacherId ? Number(teacherId) : null })
       .returning();
     res.status(201).json(created);
   } catch (error) {
@@ -47,9 +54,12 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
     const { name, academicYear, teacherId } = req.body;
-    const [existing] = await db.select().from(classes).where(eq(classes.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(classes.id, Number(id))];
+    if (schoolId) findConditions.push(eq(classes.schoolId, schoolId));
+    const [existing] = await db.select().from(classes).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Class not found' });
 
     await db
@@ -59,7 +69,7 @@ router.put('/:id', async (req, res) => {
         ...(academicYear && { academicYear }),
         ...(teacherId !== undefined && { teacherId: teacherId ? Number(teacherId) : null }),
       })
-      .where(eq(classes.id, Number(id)));
+      .where(and(...findConditions));
 
     const [updated] = await db
       .select({
@@ -85,8 +95,11 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const schoolId = (req as any).user?.schoolId;
     const { id } = req.params;
-    const [existing] = await db.select().from(classes).where(eq(classes.id, Number(id))).limit(1);
+    const findConditions: any[] = [eq(classes.id, Number(id))];
+    if (schoolId) findConditions.push(eq(classes.schoolId, schoolId));
+    const [existing] = await db.select().from(classes).where(and(...findConditions)).limit(1);
     if (!existing) return res.status(404).json({ error: 'Class not found' });
     await softDelete('classes', Number(id));
     res.json({ message: 'Class deleted. Backup retained for 30 days.' });
