@@ -27,6 +27,8 @@ import ScholarshipsPage from './pages/Scholarships.tsx';
 import SystemLogsPage from './pages/SystemLogs.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import { usePageTracking } from './lib/useActivityLog.ts';
+import api from './lib/api.ts';
+
 
 import TeacherDashboard from './pages/TeacherDashboard.tsx';
 import TeacherClasses from './pages/TeacherClasses.tsx';
@@ -77,6 +79,22 @@ const SettingsPage = () => {
             {saved && <span className="text-sm text-green-600 font-medium">Saved!</span>}
           </div>
         </div>
+      </div>
+
+      <div className="bg-white p-8 rounded-2xl border border-neutral-200">
+        <h2 className="text-lg font-bold mb-4">Developer Tools</h2>
+        <p className="text-sm text-neutral-500 mb-4">System Logs are restricted to developer role only. Click below to elevate your account.</p>
+        <button onClick={async () => {
+          try {
+            const res = await api.post('/auth/make-me-developer');
+            alert(res.data.message);
+            window.location.reload();
+          } catch (err: any) {
+            alert(err.response?.data?.error || 'Failed. Try the SQL script in scripts/setup-developer.sql');
+          }
+        }} className="bg-neutral-900 text-white px-6 py-2 rounded-xl font-medium hover:bg-neutral-700 transition-colors text-sm">
+          Make Me Developer
+        </button>
       </div>
     </div>
   );
