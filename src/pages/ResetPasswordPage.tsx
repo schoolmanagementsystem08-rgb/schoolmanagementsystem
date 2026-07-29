@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Lock, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase-client';
 
 export default function ResetPasswordPage() {
-  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -64,9 +62,10 @@ export default function ResetPasswordPage() {
       setLoading(false);
     } else {
       await supabase.auth.signOut();
+      localStorage.clear();
       setSuccess(true);
       setLoading(false);
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => { window.location.href = '/login'; }, 2000);
     }
   };
 
@@ -127,7 +126,7 @@ export default function ResetPasswordPage() {
             </>
           )}
           <p className="text-center text-sm text-neutral-500">
-            <button type="button" onClick={() => navigate('/login')}
+            <button type="button" onClick={() => window.location.href = '/login'}
               className="inline-flex items-center gap-1 text-black font-semibold hover:underline">
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
             </button>
