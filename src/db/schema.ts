@@ -13,9 +13,14 @@ export const users = pgTable('users', {
 export const schools = pgTable('schools', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
+  slug: text('slug'),
+  domain: text('domain'),
   address: text('address'),
+  logo: text('logo'),
   adminId: integer('admin_id'),
+  status: text('status').default('active').notNull(),
   settings: jsonb('settings'), // JSON object
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 export const classes = pgTable('classes', {

@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { env } from '../config/env';
 import { db } from '../db';
 import { users, teachers, schools } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { rateLimit } from '../middleware/rateLimit';
 import { authenticate } from '../middleware/auth';
 
@@ -237,18 +237,15 @@ router.get('/super-admin/stats', authenticate, async (req, res) => {
   try {
     const user = (req as any).user;
     if (!user || user.role !== 'superadmin') return res.status(403).json({ error: 'Super admin only' });
-    const { totalSchools, totalUsers, totalStudents, totalTeachers, totalClasses } = await import('../db').then(async ({ db: db2 }) => {
-      const [counts] = await db2.execute(await import('drizzle-orm').then(m => m.sql`
-        SELECT
-          (SELECT COUNT(*) FROM schools) as "totalSchools",
-          (SELECT COUNT(*) FROM users) as "totalUsers",
-          (SELECT COUNT(*) FROM students) as "totalStudents",
-          (SELECT COUNT(*) FROM teachers) as "totalTeachers",
-          (SELECT COUNT(*) FROM classes) as "totalClasses"
-      `));
-      return counts.rows[0];
-    });
-    res.json({ totalSchools, totalUsers, totalStudents, totalTeachers, totalClasses });
+    const result = await db.execute(sql`
+      SELECT
+        (SELECT COUNT(*) FROM schools) as "totalSchools",
+        (SELECT COUNT(*) FROM users) as "totalUsers",
+        (SELECT COUNT(*) FROM students) as "totalStudents",
+        (SELECT COUNT(*) FROM teachers) as "totalTeachers",
+        (SELECT COUNT(*) FROM classes) as "totalClasses"
+    `);
+    res.json(result.rows[0]);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
