@@ -70,6 +70,11 @@ export default function LoginPage() {
             <LogIn className="w-4 h-4" />
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
+          <div className="text-center text-sm">
+            <button type="button" onClick={() => navigate('/forgot-password')} className="text-neutral-500 hover:text-black hover:underline">
+              Forgot password?
+            </button>
+          </div>
           <p className="text-center text-sm text-neutral-500">
             Don't have an account?{' '}
             <button type="button" onClick={() => navigate('/signup')} className="text-black font-semibold hover:underline">

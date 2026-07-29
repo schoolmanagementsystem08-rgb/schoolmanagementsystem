@@ -4,6 +4,8 @@ import { DashboardLayout } from './components/DashboardLayout.tsx';
 import { AuthProvider, useAuth } from './lib/useAuth.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import SignupPage from './pages/SignupPage.tsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.tsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.tsx';
 import StudentsPage from './pages/Students.tsx';
 import AttendancePage from './pages/Attendance.tsx';
 import GradesPage from './pages/Grades.tsx';
@@ -119,6 +121,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     );
