@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, ArrowLeft, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase-client';
+import api from '../lib/api';
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -9,22 +9,33 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || cooldown > 0) return;
     setLoading(true);
     setError('');
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (resetError) {
-      setError(resetError.message);
-      setLoading(false);
-    } else {
-      setSent(true);
+    try {
+      const res = await api.post('/auth/forgot-password', { email });
+      if (res.status === 200) {
+        setSent(true);
+        setCooldown(60);
+        const timer = setInterval(() => {
+          setCooldown(prev => {
+            if (prev <= 1) { clearInterval(timer); return 0; }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || 'Failed to send reset link';
+      if (err.response?.status === 429) {
+        setError('Too many requests. Please wait before trying again.');
+      } else {
+        setError(msg);
+      }
       setLoading(false);
     }
   };
@@ -70,10 +81,10 @@ export default function ForgotPasswordPage() {
                 className="w-full pl-10 pr-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" required />
             </div>
           </div>
-          <button type="submit" disabled={loading}
+          <button type="submit" disabled={loading || cooldown > 0}
             className="w-full flex items-center justify-center gap-2 bg-black text-white py-3 rounded-xl font-bold hover:bg-neutral-800 transition-colors disabled:opacity-50">
             <Send className="w-4 h-4" />
-            {loading ? 'Sending...' : 'Send Reset Link'}
+            {loading ? 'Sending...' : cooldown > 0 ? `Retry in ${cooldown}s` : 'Send Reset Link'}
           </button>
           <p className="text-center text-sm text-neutral-500">
             <button type="button" onClick={() => navigate('/login')}

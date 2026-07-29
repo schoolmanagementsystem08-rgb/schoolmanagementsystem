@@ -4,12 +4,43 @@ import { env } from '../config/env';
 import { db } from '../db';
 import { users, teachers } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { rateLimit } from '../middleware/rateLimit';
 
 const supabase = createClient(env.SUPABASE_URL || '', env.SUPABASE_ANON_KEY || '');
 const supabaseAdmin = env.SUPABASE_SERVICE_ROLE_KEY
   ? createClient(env.SUPABASE_URL || '', env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
   : null;
 const router = Router();
+
+router.post('/forgot-password', rateLimit(3, 60000), async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${req.headers.origin || 'https://nexusedu-sms.pages.dev'}/reset-password`,
+    });
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ message: 'Reset link sent' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/sign-out-all', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
+    const token = authHeader.split(' ')[1];
+    const { data: { user: authUser }, error } = await supabase.auth.getUser(token);
+    if (error || !authUser) return res.status(401).json({ error: 'Invalid token' });
+    if (supabaseAdmin) {
+      await supabaseAdmin.auth.admin.signOut(authUser.id);
+    }
+    res.json({ message: 'Signed out from all devices' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 router.post('/profile', async (req, res) => {
   try {

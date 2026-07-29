@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from './components/DashboardLayout.tsx';
 import { AuthProvider, useAuth } from './lib/useAuth.tsx';
 import LoginPage from './pages/LoginPage.tsx';
@@ -39,9 +39,12 @@ import TeacherAttendance from './pages/TeacherAttendance.tsx';
 import TeacherReports from './pages/TeacherReports.tsx';
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [schoolName, setSchoolName] = useState('');
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [saved, setSaved] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     setSchoolName(localStorage.getItem('schoolName') || 'NexusEdu Academy');
@@ -84,6 +87,24 @@ const SettingsPage = () => {
       </div>
 
       <div className="bg-white p-8 rounded-2xl border border-neutral-200">
+        <h2 className="text-lg font-bold mb-4">Session Management</h2>
+        <p className="text-sm text-neutral-500 mb-4">Sign out from all active sessions across all devices.</p>
+        <button onClick={async () => {
+          setSigningOut(true);
+          try {
+            await api.post('/auth/sign-out-all');
+            await signOut();
+          } catch (err: any) {
+            alert(err.response?.data?.error || 'Failed to sign out all sessions');
+            setSigningOut(false);
+          }
+        }} disabled={signingOut}
+          className="bg-red-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-red-700 transition-colors text-sm disabled:opacity-50">
+          {signingOut ? 'Signing out...' : 'Sign Out of All Devices'}
+        </button>
+      </div>
+
+      <div className="bg-white p-8 rounded-2xl border border-neutral-200">
         <h2 className="text-lg font-bold mb-4">Developer Tools</h2>
         <p className="text-sm text-neutral-500 mb-4">System Logs are restricted to developer role only. Click below to elevate your account.</p>
         <button onClick={async () => {
@@ -116,13 +137,16 @@ function AppRoutes() {
     );
   }
 
+  if (window.location.pathname === '/reset-password') {
+    return <ResetPasswordPage />;
+  }
+
   if (!user) {
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     );

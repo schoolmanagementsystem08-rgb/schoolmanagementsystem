@@ -32,8 +32,16 @@ export default function ResetPasswordPage() {
       } else {
         setError('Invalid reset link. Please request a new one.');
       }
+    } else if (window.location.search.includes('type=recovery') || window.location.search.includes('error=access_denied')) {
+      setError('Invalid or expired reset link. Please request a new one.');
     } else {
-      setError('Invalid or missing reset link. Please request a new one.');
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          setReady(true);
+        } else {
+          setError('No reset token found. Please request a new reset link.');
+        }
+      });
     }
   }, []);
 
@@ -55,6 +63,7 @@ export default function ResetPasswordPage() {
       setError(updateError.message);
       setLoading(false);
     } else {
+      await supabase.auth.signOut();
       setSuccess(true);
       setLoading(false);
       setTimeout(() => navigate('/login'), 3000);
