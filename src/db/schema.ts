@@ -249,7 +249,7 @@ export const timetable = pgTable('timetable', {
 
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id'),
+  userId: text('user_id'),
   userName: text('user_name'),
   userRole: text('user_role'),
   action: text('action').notNull(),
@@ -265,7 +265,7 @@ export const activityLogs = pgTable('activity_logs', {
 
 export const errorLogs = pgTable('error_logs', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id'),
+  userId: text('user_id'),
   userName: text('user_name'),
   level: text('level').default('error').notNull(),
   message: text('message').notNull(),

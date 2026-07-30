@@ -8,7 +8,7 @@ function getClientIp(req: any): string {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
-function extractUser(req: any): { id: number | null; name: string; role: string } {
+function extractUser(req: any): { id: string | null; name: string; role: string } {
   const authHeader = req.headers['authorization'];
   if (authHeader) {
     try {
@@ -16,7 +16,7 @@ function extractUser(req: any): { id: number | null; name: string; role: string 
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
         return {
-          id: payload.user_id || payload.sub || null,
+          id: payload.sub || null,
           name: payload.name || payload.email || 'unknown',
           role: payload.role || 'unknown',
         };
@@ -32,7 +32,7 @@ export async function logActivity(params: {
   entityId?: number;
   details?: any;
   req?: any;
-  userId?: number;
+  userId?: string | number;
   userName?: string;
   userRole?: string;
   path?: string;
@@ -43,7 +43,7 @@ export async function logActivity(params: {
     let ua: string | undefined;
     let path = params.path;
     let method = params.method;
-    let user = { id: params.userId ?? null, name: params.userName || 'unknown', role: params.userRole || 'unknown' };
+    let user: { id: string | number | null; name: string; role: string } = { id: params.userId ?? null, name: params.userName || 'unknown', role: params.userRole || 'unknown' };
 
     if (params.req) {
       ip = getClientIp(params.req);
@@ -78,7 +78,7 @@ export async function logError(params: {
   stack?: string;
   context?: any;
   req?: any;
-  userId?: number;
+  userId?: string | number;
   userName?: string;
 }) {
   const entry = {

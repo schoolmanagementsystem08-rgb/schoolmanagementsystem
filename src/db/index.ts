@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS "timetable" ("id" serial PRIMARY KEY NOT NULL, "class
 CREATE TABLE IF NOT EXISTS "teacher_salaries" ("id" serial PRIMARY KEY NOT NULL, "teacher_id" integer NOT NULL, "basic_salary" real NOT NULL, "housing_allowance" real DEFAULT 0 NOT NULL, "transport_allowance" real DEFAULT 0 NOT NULL, "medical_allowance" real DEFAULT 0 NOT NULL, "other_allowance" real DEFAULT 0 NOT NULL, "tax_deduction" real DEFAULT 0 NOT NULL, "insurance_deduction" real DEFAULT 0 NOT NULL, "other_deduction" real DEFAULT 0 NOT NULL, "effective_date" timestamp NOT NULL, "status" text DEFAULT 'Active' NOT NULL, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "payroll_records" ("id" serial PRIMARY KEY NOT NULL, "teacher_id" integer NOT NULL, "period" text NOT NULL, "basic_salary" real NOT NULL, "housing_allowance" real DEFAULT 0 NOT NULL, "transport_allowance" real DEFAULT 0 NOT NULL, "medical_allowance" real DEFAULT 0 NOT NULL, "other_allowance" real DEFAULT 0 NOT NULL, "bonus" real DEFAULT 0 NOT NULL, "tax_deduction" real DEFAULT 0 NOT NULL, "insurance_deduction" real DEFAULT 0 NOT NULL, "other_deduction" real DEFAULT 0 NOT NULL, "net_pay" real NOT NULL, "payment_date" timestamp, "status" text DEFAULT 'Draft' NOT NULL, "notes" text, "created_at" timestamp DEFAULT now() NOT NULL);
 CREATE TABLE IF NOT EXISTS "scholarships" ("id" serial PRIMARY KEY NOT NULL, "student_id" integer NOT NULL, "scholarship_name" text NOT NULL, "type" text NOT NULL, "discount_percentage" real NOT NULL, "amount" real, "start_date" timestamp NOT NULL, "end_date" timestamp, "status" text DEFAULT 'Active' NOT NULL, "notes" text, "approved_by" integer, "created_at" timestamp DEFAULT now() NOT NULL);
-CREATE TABLE IF NOT EXISTS "activity_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer, "user_name" text, "user_role" text, "action" text NOT NULL, "entity" text, "entity_id" integer, "details" jsonb, "ip_address" text, "user_agent" text, "path" text, "method" text, "timestamp" timestamp DEFAULT now() NOT NULL);
-CREATE TABLE IF NOT EXISTS "error_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" integer, "user_name" text, "level" text DEFAULT 'error' NOT NULL, "message" text NOT NULL, "stack" text, "context" jsonb, "ip_address" text, "url" text, "timestamp" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "activity_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" text, "user_name" text, "user_role" text, "action" text NOT NULL, "entity" text, "entity_id" integer, "details" jsonb, "ip_address" text, "user_agent" text, "path" text, "method" text, "timestamp" timestamp DEFAULT now() NOT NULL);
+CREATE TABLE IF NOT EXISTS "error_logs" ("id" serial PRIMARY KEY NOT NULL, "user_id" text, "user_name" text, "level" text DEFAULT 'error' NOT NULL, "message" text NOT NULL, "stack" text, "context" jsonb, "ip_address" text, "url" text, "timestamp" timestamp DEFAULT now() NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_fees_student_id ON fees (student_id);
 CREATE INDEX IF NOT EXISTS idx_fee_structures_class_term ON fee_structures (class_id, academic_year, term);
@@ -247,6 +247,21 @@ CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records (period
         BEGIN
           IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='users_auth_id_unique') THEN
             ALTER TABLE "users" ADD CONSTRAINT "users_auth_id_unique" UNIQUE("auth_id");
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='activity_logs' AND column_name='user_id' AND data_type='integer') THEN
+            ALTER TABLE "activity_logs" ALTER COLUMN "user_id" TYPE text;
+          END IF;
+        END $$;
+        DO $$
+        BEGIN
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='error_logs' AND column_name='user_id' AND data_type='integer') THEN
+            ALTER TABLE "error_logs" ALTER COLUMN "user_id" TYPE text;
           END IF;
         END $$;
       `);

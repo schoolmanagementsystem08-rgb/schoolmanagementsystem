@@ -12,7 +12,7 @@ router.get('/activity', async (req, res) => {
     const conditions = [];
     if (action) conditions.push(eq(activityLogs.action, String(action)));
     if (entity) conditions.push(eq(activityLogs.entity, String(entity)));
-    if (userId) conditions.push(eq(activityLogs.userId, Number(userId)));
+    if (userId) conditions.push(eq(activityLogs.userId, String(userId)));
     if (from) conditions.push(gte(activityLogs.timestamp, new Date(String(from))));
     if (to) conditions.push(lte(activityLogs.timestamp, new Date(String(to))));
 
