@@ -72,11 +72,6 @@ CREATE INDEX IF NOT EXISTS idx_error_logs_timestamp ON error_logs (timestamp);
 CREATE INDEX IF NOT EXISTS idx_teacher_salaries_teacher ON teacher_salaries (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_payroll_records_teacher ON payroll_records (teacher_id);
 CREATE INDEX IF NOT EXISTS idx_payroll_records_period ON payroll_records (period);
-CREATE INDEX IF NOT EXISTS idx_schools_slug ON schools (slug);
-CREATE INDEX IF NOT EXISTS idx_schools_domain ON schools (domain);
-CREATE INDEX IF NOT EXISTS idx_users_school_id ON users (school_id);
-CREATE INDEX IF NOT EXISTS idx_students_school_id ON students (school_id);
-CREATE INDEX IF NOT EXISTS idx_teachers_school_id ON teachers (school_id);
       `);
 
       await client.query(`
@@ -225,6 +220,13 @@ CREATE INDEX IF NOT EXISTS idx_teachers_school_id ON teachers (school_id);
             ALTER TABLE "qualifications" ADD COLUMN "school_id" integer;
           END IF;
         END $$;
+
+        -- Indexes for school_id columns
+        CREATE INDEX IF NOT EXISTS idx_schools_slug ON schools (slug);
+        CREATE INDEX IF NOT EXISTS idx_schools_domain ON schools (domain);
+        CREATE INDEX IF NOT EXISTS idx_users_school_id ON users (school_id);
+        CREATE INDEX IF NOT EXISTS idx_students_school_id ON students (school_id);
+        CREATE INDEX IF NOT EXISTS idx_teachers_school_id ON teachers (school_id);
       `);
 
       await client.query(`
