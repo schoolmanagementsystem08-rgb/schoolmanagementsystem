@@ -1,8 +1,14 @@
 import { Router } from 'express';
+import { createClient } from '@supabase/supabase-js';
 import { db } from '../db';
 import { users, schools, teachers, students, classes, subjects, guardians, qualifications, teacherSalaries, payrollRecords, leaveRequests, fees, feePayments, feeStructures, attendance, timetable } from '../db/schema';
-import { eq, sql, count } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { authenticate } from '../middleware/auth';
+import { env } from '../config/env';
+
+const supabaseAdmin = env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(env.SUPABASE_URL || '', env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
+  : null;
 
 const router = Router();
 
@@ -220,6 +226,228 @@ router.get('/timetable', authenticate, async (req, res) => {
       LIMIT 500
     `);
     res.json(rows.rows);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── CRUD: Schools ──
+router.delete('/schools/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(schools).where(eq(schools.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'School not found' });
+    await db.delete(schools).where(eq(schools.id, id));
+    res.json({ message: 'School deleted permanently' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── CRUD: Users ──
+router.put('/users/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const { name, email, role, schoolId } = req.body;
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (email !== undefined) updates.email = email;
+    if (role !== undefined) updates.role = role;
+    if (schoolId !== undefined) updates.schoolId = schoolId === '' ? null : parseInt(schoolId);
+    const [updated] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    if (!updated) return res.status(404).json({ error: 'User not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/users/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'User not found' });
+    if (supabaseAdmin) {
+      await supabaseAdmin.auth.admin.deleteUser(existing.authId).catch(() => {});
+    }
+    await db.delete(users).where(eq(users.id, id));
+    res.json({ message: 'User deleted permanently' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── CRUD: Teachers ──
+router.put('/teachers/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const { employeeId, specialization, phone, status, portalAccess, schoolId } = req.body;
+    const updates: any = {};
+    if (employeeId !== undefined) updates.employeeId = employeeId;
+    if (specialization !== undefined) updates.specialization = specialization;
+    if (phone !== undefined) updates.phone = phone;
+    if (status !== undefined) updates.status = status;
+    if (portalAccess !== undefined) updates.portalAccess = portalAccess;
+    if (schoolId !== undefined) updates.schoolId = schoolId === '' ? null : parseInt(schoolId);
+    const [updated] = await db.update(teachers).set(updates).where(eq(teachers.id, id)).returning();
+    if (!updated) return res.status(404).json({ error: 'Teacher not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/teachers/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(teachers).where(eq(teachers.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Teacher not found' });
+    await db.delete(teachers).where(eq(teachers.id, id));
+    res.json({ message: 'Teacher deleted permanently' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── CRUD: Students ──
+router.put('/students/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const { classId, studentId, gender, status, schoolId, guardianName, guardianPhone, guardianEmail, guardianRelationship } = req.body;
+    const updates: any = {};
+    if (classId !== undefined) updates.classId = parseInt(classId);
+    if (studentId !== undefined) updates.studentId = studentId;
+    if (gender !== undefined) updates.gender = gender;
+    if (status !== undefined) updates.status = status;
+    if (schoolId !== undefined) updates.schoolId = schoolId === '' ? null : parseInt(schoolId);
+    await db.update(students).set(updates).where(eq(students.id, id));
+
+    if (guardianName !== undefined) {
+      const [st] = await db.select().from(students).where(eq(students.id, id)).limit(1);
+      if (st?.guardianId) {
+        await db.update(guardians).set({
+          name: guardianName,
+          phone: guardianPhone,
+          email: guardianEmail,
+          relationship: guardianRelationship,
+        }).where(eq(guardians.id, st.guardianId));
+      }
+    }
+
+    const [updated] = await db.select()
+      .from(students)
+      .leftJoin(guardians, eq(students.guardianId, guardians.id))
+      .where(eq(students.id, id)).limit(1);
+    if (!updated) return res.status(404).json({ error: 'Student not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/students/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(students).where(eq(students.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Student not found' });
+    await db.delete(students).where(eq(students.id, id));
+    res.json({ message: 'Student deleted permanently' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── CRUD: Classes ──
+router.post('/classes', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const { name, schoolId, teacherId, academicYear } = req.body;
+    const [created] = await db.insert(classes).values({
+      name, schoolId: parseInt(schoolId), teacherId: teacherId ? parseInt(teacherId) : null, academicYear,
+    }).returning();
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/classes/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const { name, schoolId, teacherId, academicYear } = req.body;
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (schoolId !== undefined) updates.schoolId = parseInt(schoolId);
+    if (teacherId !== undefined) updates.teacherId = teacherId === '' ? null : parseInt(teacherId);
+    if (academicYear !== undefined) updates.academicYear = academicYear;
+    const [updated] = await db.update(classes).set(updates).where(eq(classes.id, id)).returning();
+    if (!updated) return res.status(404).json({ error: 'Class not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/classes/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(classes).where(eq(classes.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Class not found' });
+    await db.delete(classes).where(eq(classes.id, id));
+    res.json({ message: 'Class deleted permanently' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ── CRUD: Subjects ──
+router.post('/subjects', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const { name, classId, teacherId } = req.body;
+    const [created] = await db.insert(subjects).values({
+      name, classId: parseInt(classId), teacherId: teacherId ? parseInt(teacherId) : null,
+    }).returning();
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/subjects/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const { name, classId, teacherId } = req.body;
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (classId !== undefined) updates.classId = parseInt(classId);
+    if (teacherId !== undefined) updates.teacherId = teacherId === '' ? null : parseInt(teacherId);
+    const [updated] = await db.update(subjects).set(updates).where(eq(subjects.id, id)).returning();
+    if (!updated) return res.status(404).json({ error: 'Subject not found' });
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/subjects/:id', authenticate, async (req, res) => {
+  if (!requireSuperAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(subjects).where(eq(subjects.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: 'Subject not found' });
+    await db.delete(subjects).where(eq(subjects.id, id));
+    res.json({ message: 'Subject deleted permanently' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
