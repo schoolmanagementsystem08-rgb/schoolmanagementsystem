@@ -55,7 +55,7 @@ export async function logActivity(params: {
     }
 
     await db.insert(activityLogs).values({
-      userId: user.id,
+      userId: user.id != null ? String(user.id) : null,
       userName: user.name,
       userRole: user.role,
       action: params.action,
@@ -81,8 +81,8 @@ export async function logError(params: {
   userId?: string | number;
   userName?: string;
 }) {
-  const entry = {
-    userId: params.userId ?? null,
+  const entry: any = {
+    userId: params.userId != null ? String(params.userId) : null,
     userName: params.userName || 'unknown',
     level: params.level || 'error',
     message: params.message,
@@ -97,7 +97,7 @@ export async function logError(params: {
     entry.url = params.req.originalUrl || params.req.url;
     const extracted = extractUser(params.req);
     if (!params.userId) {
-      entry.userId = extracted.id;
+      entry.userId = extracted.id != null ? String(extracted.id) : null;
       entry.userName = extracted.name;
     }
   }

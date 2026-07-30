@@ -103,6 +103,7 @@ export const teachers = pgTable('teachers', {
   phone: text('phone'),
   status: text('status').default('Active').notNull(),
   portalAccess: text('portal_access').default('full').notNull(),
+  schoolId: integer('school_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
