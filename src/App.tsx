@@ -30,6 +30,7 @@ import ScholarshipsPage from './pages/Scholarships.tsx';
 import SystemLogsPage from './pages/SystemLogs.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import { usePageTracking } from './lib/useActivityLog.ts';
+import { useInactivityTimeout } from './lib/useInactivityTimeout.ts';
 import api from './lib/api.ts';
 
 
@@ -172,6 +173,7 @@ function AppRoutes() {
   const isTeacher = role === 'teacher';
 
   usePageTracking();
+  useInactivityTimeout();
 
   return (
     <DashboardLayout userRole={role}>

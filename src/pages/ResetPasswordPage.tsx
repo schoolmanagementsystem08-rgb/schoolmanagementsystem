@@ -24,6 +24,7 @@ export default function ResetPasswordPage() {
           if (sessionError) {
             setError('Invalid or expired reset link. Please request a new one.');
           } else {
+            window.location.hash = '';
             setReady(true);
           }
         });
