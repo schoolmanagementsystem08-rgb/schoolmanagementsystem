@@ -251,6 +251,72 @@ router.get('/super-admin/stats', authenticate, async (req, res) => {
   }
 });
 
+router.post('/make-me-superadmin', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'No token' });
+    const token = authHeader.split(' ')[1];
+    const { data: { user: authUser }, error } = await supabase.auth.getUser(token);
+    if (error || !authUser) return res.status(401).json({ error: 'Invalid token' });
+    const [profile] = await db.select().from(users).where(eq(users.authId, authUser.id)).limit(1);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    await db.update(users).set({ role: 'superadmin', schoolId: null }).where(eq(users.id, profile.id));
+    if (supabaseAdmin) {
+      await supabaseAdmin.auth.admin.updateUserById(authUser.id, { user_metadata: { role: 'superadmin' } });
+    }
+    const [updated] = await db.select().from(users).where(eq(users.id, profile.id)).limit(1);
+    res.json({ user: updated, message: 'You are now super admin. Log out and log back in.' });
+  } catch (error: any) {
+    console.error('[Auth /make-me-superadmin] Error:', error?.message);
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// ── Super admin: create school admin user ──
+router.post('/invite-user', authenticate, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    if (!currentUser || currentUser.role !== 'superadmin') return res.status(403).json({ error: 'Super admin only' });
+    const { name, email, password, role, schoolId } = req.body;
+    if (!name || !email || !password || !role || !schoolId) return res.status(400).json({ error: 'Name, email, password, role, schoolId required' });
+
+    // Verify school exists
+    const [school] = await db.select().from(schools).where(eq(schools.id, schoolId)).limit(1);
+    if (!school) return res.status(404).json({ error: 'School not found' });
+
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Server not configured for user creation' });
+
+    const { data, error: signUpError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { name, role },
+    });
+    if (signUpError || !data.user) return res.status(500).json({ error: signUpError?.message || 'Failed to create auth user' });
+
+    // Validate role
+    const allowedRoles = ['admin', 'teacher', 'student', 'parent'];
+    if (!allowedRoles.includes(role)) return res.status(400).json({ error: `Invalid role. Must be one of: ${allowedRoles.join(', ')}` });
+
+    const [created] = await db.insert(users).values({
+      authId: data.user.id,
+      name,
+      email,
+      role,
+      schoolId,
+    }).returning();
+
+    if (role === 'teacher') {
+      const { teachers } = await import('../db/schema');
+      await db.insert(teachers).values({ userId: created.id, specialization: 'General', schoolId });
+    }
+
+    res.status(201).json({ user: created, message: `${name} created as ${role}` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/make-me-developer', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;

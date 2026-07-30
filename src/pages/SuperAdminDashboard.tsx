@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Users, GraduationCap, UserCheck, School, Plus } from 'lucide-react';
+import { Building2, Users, GraduationCap, UserCheck, School, Plus, UserPlus } from 'lucide-react';
 import api from '../lib/api';
 import { toastSuccess, toastError } from '../lib/alerts';
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState({ totalSchools: 0, totalUsers: 0, totalStudents: 0, totalTeachers: 0, totalClasses: 0 });
   const [schools, setSchools] = useState<any[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', slug: '', domain: '', address: '' });
+  const [showSchoolModal, setShowSchoolModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [schoolForm, setSchoolForm] = useState({ name: '', slug: '', domain: '', address: '' });
+  const [userForm, setUserForm] = useState({ name: '', email: '', password: '', role: 'admin', schoolId: '' });
 
   useEffect(() => {
     api.get('/auth/schools').then(r => setSchools(r.data)).catch(() => {});
@@ -17,11 +19,23 @@ export default function SuperAdminDashboard() {
   const createSchool = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await api.post('/auth/schools', form);
+      const res = await api.post('/auth/schools', schoolForm);
       setSchools(prev => [...prev, res.data]);
-      setShowModal(false);
-      setForm({ name: '', slug: '', domain: '', address: '' });
+      setShowSchoolModal(false);
+      setSchoolForm({ name: '', slug: '', domain: '', address: '' });
       toastSuccess('School created');
+    } catch (err: any) {
+      toastError(err.response?.data?.error || 'Failed');
+    }
+  };
+
+  const inviteUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/auth/invite-user', { ...userForm, schoolId: parseInt(userForm.schoolId) });
+      setShowUserModal(false);
+      setUserForm({ name: '', email: '', password: '', role: 'admin', schoolId: '' });
+      toastSuccess('User created and invited');
     } catch (err: any) {
       toastError(err.response?.data?.error || 'Failed');
     }
@@ -54,10 +68,16 @@ export default function SuperAdminDashboard() {
       <div className="bg-white p-6 rounded-2xl border border-neutral-200">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">All Schools</h2>
-          <button onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 bg-black text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-neutral-800 transition-colors">
-            <Plus className="w-4 h-4" /> Add School
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowUserModal(true)}
+              className="flex items-center gap-1.5 bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors">
+              <UserPlus className="w-4 h-4" /> Invite User
+            </button>
+            <button onClick={() => setShowSchoolModal(true)}
+              className="flex items-center gap-1.5 bg-black text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-neutral-800 transition-colors">
+              <Plus className="w-4 h-4" /> Add School
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -67,6 +87,7 @@ export default function SuperAdminDashboard() {
                 <th className="pb-3 font-medium">Slug</th>
                 <th className="pb-3 font-medium">Domain</th>
                 <th className="pb-3 font-medium">Status</th>
+                <th className="pb-3 font-medium">ID</th>
               </tr>
             </thead>
             <tbody>
@@ -80,34 +101,69 @@ export default function SuperAdminDashboard() {
                       {s.status}
                     </span>
                   </td>
+                  <td className="py-3 text-neutral-400 text-xs">{s.id}</td>
                 </tr>
               ))}
               {schools.length === 0 && (
-                <tr><td colSpan={4} className="py-8 text-center text-neutral-400">No schools yet</td></tr>
+                <tr><td colSpan={5} className="py-8 text-center text-neutral-400">No schools yet</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
+      {showSchoolModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowSchoolModal(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-bold mb-4">New School</h2>
             <form onSubmit={createSchool} className="space-y-3">
-              <input placeholder="School Name" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }))}
+              <input placeholder="School Name" value={schoolForm.name} onChange={e => setSchoolForm(p => ({ ...p, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }))}
                 className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" required />
-              <input placeholder="Slug (auto-filled)" value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))}
+              <input placeholder="Slug (auto-filled)" value={schoolForm.slug} onChange={e => setSchoolForm(p => ({ ...p, slug: e.target.value }))}
                 className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" required />
-              <input placeholder="Custom domain (optional)" value={form.domain} onChange={e => setForm(p => ({ ...p, domain: e.target.value }))}
+              <input placeholder="Custom domain (optional)" value={schoolForm.domain} onChange={e => setSchoolForm(p => ({ ...p, domain: e.target.value }))}
                 className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" />
-              <input placeholder="Address (optional)" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
+              <input placeholder="Address (optional)" value={schoolForm.address} onChange={e => setSchoolForm(p => ({ ...p, address: e.target.value }))}
                 className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" />
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowModal(false)}
+                <button type="button" onClick={() => setShowSchoolModal(false)}
                   className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium hover:bg-neutral-50 transition-colors">Cancel</button>
                 <button type="submit"
                   className="flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium hover:bg-neutral-800 transition-colors">Create</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showUserModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowUserModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-4">Invite User to School</h2>
+            <form onSubmit={inviteUser} className="space-y-3">
+              <input placeholder="Full Name" value={userForm.name} onChange={e => setUserForm(p => ({ ...p, name: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" required />
+              <input type="email" placeholder="Email" value={userForm.email} onChange={e => setUserForm(p => ({ ...p, email: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" required />
+              <input type="password" placeholder="Temporary Password" value={userForm.password} onChange={e => setUserForm(p => ({ ...p, password: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" required minLength={6} />
+              <select value={userForm.role} onChange={e => setUserForm(p => ({ ...p, role: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5">
+                <option value="admin">School Admin</option>
+                <option value="teacher">Teacher</option>
+                <option value="student">Student</option>
+                <option value="parent">Parent</option>
+              </select>
+              <select value={userForm.schoolId} onChange={e => setUserForm(p => ({ ...p, schoolId: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" required>
+                <option value="">Select School</option>
+                {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <div className="flex gap-2 pt-2">
+                <button type="button" onClick={() => setShowUserModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium hover:bg-neutral-50 transition-colors">Cancel</button>
+                <button type="submit"
+                  className="flex-1 bg-purple-600 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-purple-700 transition-colors">Create User</button>
               </div>
             </form>
           </div>

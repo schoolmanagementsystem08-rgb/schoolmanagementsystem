@@ -41,7 +41,7 @@ import TeacherReports from './pages/TeacherReports.tsx';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, role } = useAuth();
   const [schoolName, setSchoolName] = useState('');
   const [academicYear, setAcademicYear] = useState('2026-2027');
   const [saved, setSaved] = useState(false);
@@ -105,21 +105,36 @@ const SettingsPage = () => {
         </button>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl border border-neutral-200">
-        <h2 className="text-lg font-bold mb-4">Developer Tools</h2>
-        <p className="text-sm text-neutral-500 mb-4">System Logs are restricted to developer role only. Click below to elevate your account.</p>
-        <button onClick={async () => {
-          try {
-            const res = await api.post('/auth/make-me-developer');
-            alert(res.data.message);
-            window.location.reload();
-          } catch (err: any) {
-            alert(err.response?.data?.error || 'Failed. Try the SQL script in scripts/setup-developer.sql');
-          }
-        }} className="bg-neutral-900 text-white px-6 py-2 rounded-xl font-medium hover:bg-neutral-700 transition-colors text-sm">
-          Make Me Developer
-        </button>
-      </div>
+      {role !== 'superadmin' && (
+        <div className="bg-white p-8 rounded-2xl border border-neutral-200">
+          <h2 className="text-lg font-bold mb-4">Role Elevation</h2>
+          <p className="text-sm text-neutral-500 mb-4">Elevate your account to access more features.</p>
+          <div className="flex flex-wrap gap-3">
+            <button onClick={async () => {
+              try {
+                const res = await api.post('/auth/make-me-developer');
+                alert(res.data.message);
+                window.location.reload();
+              } catch (err: any) {
+                alert(err.response?.data?.error || 'Failed');
+              }
+            }} className="bg-neutral-900 text-white px-6 py-2 rounded-xl font-medium hover:bg-neutral-700 transition-colors text-sm">
+              Make Me Developer
+            </button>
+            <button onClick={async () => {
+              try {
+                const res = await api.post('/auth/make-me-superadmin');
+                alert(res.data.message);
+                window.location.reload();
+              } catch (err: any) {
+                alert(err.response?.data?.error || 'Failed');
+              }
+            }} className="bg-purple-700 text-white px-6 py-2 rounded-xl font-medium hover:bg-purple-800 transition-colors text-sm">
+              Make Me Super Admin
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
