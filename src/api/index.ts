@@ -23,6 +23,7 @@ import feeStructuresRouter from './fee-structures';
 import feePaymentsRouter from './fee-payments';
 import teacherSalariesRouter from './teacher-salaries';
 import payrollRecordsRouter from './payroll-records';
+import superadminRouter from './superadmin';
 
 export {
   healthRouter,
@@ -50,4 +51,5 @@ export {
   feePaymentsRouter,
   teacherSalariesRouter,
   payrollRecordsRouter,
+  superadminRouter,
 };
