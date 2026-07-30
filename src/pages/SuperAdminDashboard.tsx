@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Building2, Users, GraduationCap, UserCheck, School, BookOpen,
   DollarSign, CalendarCheck, Plus, UserPlus, ChevronDown,
-  ChevronUp, Search, Pencil, Trash2, X, Save
+  ChevronUp, Search, Pencil, Trash2, X, Save, Clock
 } from 'lucide-react';
 import api from '../lib/api';
 import { toastSuccess, toastError } from '../lib/alerts';
@@ -25,7 +25,6 @@ export default function SuperAdminDashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Super Admin Dashboard</h1>
-
       <div className="flex flex-wrap gap-2 border-b border-neutral-200 pb-2">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -36,7 +35,6 @@ export default function SuperAdminDashboard() {
           </button>
         ))}
       </div>
-
       {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'schools' && <SchoolsTab />}
       {activeTab === 'users' && <UsersTab />}
@@ -80,11 +78,28 @@ function Modal({ open, onClose, title, children }: any) {
   );
 }
 
+function Input({ label, ...props }: any) {
+  return (
+    <div>
+      {label && <label className="block text-sm font-medium text-neutral-500 mb-1">{label}</label>}
+      <input className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" {...props} />
+    </div>
+  );
+}
+
+function Select({ label, children, ...props }: any) {
+  return (
+    <div>
+      {label && <label className="block text-sm font-medium text-neutral-500 mb-1">{label}</label>}
+      <select className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5" {...props}>{children}</select>
+    </div>
+  );
+}
+
+// ── Overview ──
 function OverviewTab() {
   const [stats, setStats] = useState<any>({});
-  useEffect(() => {
-    api.get('/superadmin/overview').then(r => setStats(r.data)).catch(() => {});
-  }, []);
+  useEffect(() => { api.get('/superadmin/overview').then(r => setStats(r.data)).catch(() => {}); }, []);
 
   const cards = [
     { label: 'Schools', value: stats.totalSchools, icon: Building2, color: 'bg-blue-500' },
@@ -105,19 +120,15 @@ function OverviewTab() {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map(card => (
         <div key={card.label} className="bg-white p-5 rounded-2xl border border-neutral-200 flex items-center gap-4">
-          <div className={`w-12 h-12 ${card.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
-            <card.icon className="w-6 h-6 text-white" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold truncate">{card.value}</p>
-            <p className="text-sm text-neutral-500 truncate">{card.label}</p>
-          </div>
+          <div className={`w-12 h-12 ${card.color} rounded-xl flex items-center justify-center flex-shrink-0`}><card.icon className="w-6 h-6 text-white" /></div>
+          <div className="min-w-0"><p className="text-2xl font-bold truncate">{card.value}</p><p className="text-sm text-neutral-500 truncate">{card.label}</p></div>
         </div>
       ))}
     </div>
   );
 }
 
+// ── Schools ──
 function SchoolsTab() {
   const [data, setData] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -131,11 +142,7 @@ function SchoolsTab() {
   const load = () => api.get('/superadmin/schools/detail').then(r => setData(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
-  const toggleRow = (id: number) => {
-    const next = new Set(expanded);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setExpanded(next);
-  };
+  const schools = Array.isArray(data) ? data : [];
 
   const createSchool = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +159,7 @@ function SchoolsTab() {
     e.preventDefault();
     if (!editSchool) return;
     try {
-      await api.put(`/auth/schools/${editSchool.id}`, editSchool);
+      await api.put(`/auth/schools/${editSchool.id}`, { name: editSchool.name, domain: editSchool.domain, address: editSchool.address, status: editSchool.status });
       toastSuccess('School updated');
       setEditSchool(null);
       load();
@@ -161,12 +168,8 @@ function SchoolsTab() {
 
   const deleteSchool = async () => {
     if (!deleteTarget) return;
-    try {
-      await api.delete(`/superadmin/schools/${deleteTarget.id}`);
-      toastSuccess('School deleted');
-      setDeleteTarget(null);
-      load();
-    } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
+    try { await api.delete(`/superadmin/schools/${deleteTarget.id}`); toastSuccess('School deleted'); setDeleteTarget(null); load(); }
+    catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const inviteUser = async (e: React.FormEvent) => {
@@ -179,35 +182,24 @@ function SchoolsTab() {
     } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
-  const schools = Array.isArray(data) ? data : [];
-
   return (
     <>
       <div className="bg-white p-6 rounded-2xl border border-neutral-200">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">All Schools</h2>
           <div className="flex gap-2">
-            <button onClick={() => setShowUserModal(true)}
-              className="flex items-center gap-1.5 bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-purple-700">
-              <UserPlus className="w-4 h-4" /> Invite User
-            </button>
-            <button onClick={() => setShowSchoolModal(true)}
-              className="flex items-center gap-1.5 bg-black text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-neutral-800">
-              <Plus className="w-4 h-4" /> Add School
-            </button>
+            <button onClick={() => setShowUserModal(true)} className="flex items-center gap-1.5 bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-purple-700"><UserPlus className="w-4 h-4" /> Invite User</button>
+            <button onClick={() => setShowSchoolModal(true)} className="flex items-center gap-1.5 bg-black text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-neutral-800"><Plus className="w-4 h-4" /> Add School</button>
           </div>
         </div>
         <div className="space-y-2">
           {schools.map(s => (
             <div key={s.id} className="border border-neutral-200 rounded-xl overflow-hidden">
-              <button onClick={() => toggleRow(s.id)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-neutral-50 transition-colors">
+              <button onClick={() => { const n = new Set(expanded); n.has(s.id) ? n.delete(s.id) : n.add(s.id); setExpanded(n); }}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-neutral-50">
                 <div className="flex items-center gap-3">
                   <School className="w-5 h-5 text-neutral-400" />
-                  <div>
-                    <span className="font-medium">{s.name}</span>
-                    <span className="ml-2 text-sm text-neutral-400">/{s.slug}</span>
-                  </div>
+                  <div><span className="font-medium">{s.name}</span><span className="ml-2 text-sm text-neutral-400">/{s.slug}</span></div>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-neutral-500">
                   <span>{s.teacherCount || 0} teachers</span>
@@ -229,12 +221,8 @@ function SchoolsTab() {
                     <div><span className="text-neutral-400">ID:</span> {s.id}</div>
                   </div>
                   <div className="flex gap-2 pt-2 border-t border-neutral-100">
-                    <button onClick={() => setEditSchool({ ...s })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
-                      <Pencil className="w-3.5 h-3.5" /> Edit
-                    </button>
-                    <button onClick={() => setDeleteTarget(s)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium">
-                      <Trash2 className="w-3.5 h-3.5" /> Delete
-                    </button>
+                    <button onClick={() => setEditSchool({ ...s })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"><Pencil className="w-3.5 h-3.5" /> Edit</button>
+                    <button onClick={() => setDeleteTarget(s)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                   </div>
                 </div>
               )}
@@ -246,39 +234,27 @@ function SchoolsTab() {
 
       <Modal open={!!editSchool} onClose={() => setEditSchool(null)} title="Edit School">
         <form onSubmit={updateSchool} className="space-y-3">
-          <input label="Name" value={editSchool?.name || ''} onChange={e => setEditSchool((p: any) => ({ ...p, name: e.target.value }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input label="Domain" value={editSchool?.domain || ''} onChange={e => setEditSchool((p: any) => ({ ...p, domain: e.target.value }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input label="Address" value={editSchool?.address || ''} onChange={e => setEditSchool((p: any) => ({ ...p, address: e.target.value }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <select value={editSchool?.status || 'active'} onChange={e => setEditSchool((p: any) => ({ ...p, status: e.target.value }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl">
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+          <Input label="Name" value={editSchool?.name || ''} onChange={e => setEditSchool((p: any) => ({ ...p, name: e.target.value }))} required />
+          <Input label="Domain" value={editSchool?.domain || ''} onChange={e => setEditSchool((p: any) => ({ ...p, domain: e.target.value }))} />
+          <Input label="Address" value={editSchool?.address || ''} onChange={e => setEditSchool((p: any) => ({ ...p, address: e.target.value }))} />
+          <Select label="Status" value={editSchool?.status || 'active'} onChange={e => setEditSchool((p: any) => ({ ...p, status: e.target.value }))}>
+            <option value="active">Active</option><option value="inactive">Inactive</option>
+          </Select>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setEditSchool(null)} className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium">Cancel</button>
-            <button type="submit" className="flex items-center justify-center gap-1.5 flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium">
-              <Save className="w-4 h-4" /> Save
-            </button>
+            <button type="submit" className="flex items-center justify-center gap-1.5 flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium"><Save className="w-4 h-4" /> Save</button>
           </div>
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!deleteTarget} title="Delete School" message={`Permanently delete "${deleteTarget?.name}"? All related data remains orphaned.`}
-        onConfirm={deleteSchool} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={!!deleteTarget} title="Delete School" message={`Permanently delete "${deleteTarget?.name}"? All related data remains orphaned.`} onConfirm={deleteSchool} onCancel={() => setDeleteTarget(null)} />
 
       <Modal open={showSchoolModal} onClose={() => setShowSchoolModal(false)} title="New School">
         <form onSubmit={createSchool} className="space-y-3">
-          <input placeholder="School Name" value={schoolForm.name} onChange={e => setSchoolForm(p => ({ ...p, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input placeholder="Slug (auto-filled)" value={schoolForm.slug} onChange={e => setSchoolForm(p => ({ ...p, slug: e.target.value }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input placeholder="Custom domain (optional)" value={schoolForm.domain} onChange={e => setSchoolForm(p => ({ ...p, domain: e.target.value }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input placeholder="Address (optional)" value={schoolForm.address} onChange={e => setSchoolForm(p => ({ ...p, address: e.target.value }))}
-            className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
+          <Input placeholder="School Name" value={schoolForm.name} onChange={e => setSchoolForm(p => ({ ...p, name: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') }))} required />
+          <Input placeholder="Slug (auto-filled)" value={schoolForm.slug} onChange={e => setSchoolForm(p => ({ ...p, slug: e.target.value }))} required />
+          <Input placeholder="Custom domain (optional)" value={schoolForm.domain} onChange={e => setSchoolForm(p => ({ ...p, domain: e.target.value }))} />
+          <Input placeholder="Address (optional)" value={schoolForm.address} onChange={e => setSchoolForm(p => ({ ...p, address: e.target.value }))} />
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setShowSchoolModal(false)} className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium">Cancel</button>
             <button type="submit" className="flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium">Create</button>
@@ -288,16 +264,16 @@ function SchoolsTab() {
 
       <Modal open={showUserModal} onClose={() => setShowUserModal(false)} title="Invite User to School">
         <form onSubmit={inviteUser} className="space-y-3">
-          <input placeholder="Full Name" value={userForm.name} onChange={e => setUserForm(p => ({ ...p, name: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input type="email" placeholder="Email" value={userForm.email} onChange={e => setUserForm(p => ({ ...p, email: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input type="password" placeholder="Temporary Password" value={userForm.password} onChange={e => setUserForm(p => ({ ...p, password: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required minLength={6} />
-          <select value={userForm.role} onChange={e => setUserForm(p => ({ ...p, role: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl">
+          <Input placeholder="Full Name" value={userForm.name} onChange={e => setUserForm(p => ({ ...p, name: e.target.value }))} required />
+          <Input type="email" placeholder="Email" value={userForm.email} onChange={e => setUserForm(p => ({ ...p, email: e.target.value }))} required />
+          <Input type="password" placeholder="Temporary Password" value={userForm.password} onChange={e => setUserForm(p => ({ ...p, password: e.target.value }))} required minLength={6} />
+          <Select value={userForm.role} onChange={e => setUserForm(p => ({ ...p, role: e.target.value }))}>
             <option value="admin">School Admin</option><option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option>
-          </select>
-          <select value={userForm.schoolId} onChange={e => setUserForm(p => ({ ...p, schoolId: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required>
+          </Select>
+          <Select value={userForm.schoolId} onChange={e => setUserForm(p => ({ ...p, schoolId: e.target.value }))} required>
             <option value="">Select School</option>
             {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </Select>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setShowUserModal(false)} className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium">Cancel</button>
             <button type="submit" className="flex-1 bg-purple-600 text-white px-4 py-2.5 rounded-xl font-medium">Create User</button>
@@ -308,35 +284,36 @@ function SchoolsTab() {
   );
 }
 
+// ── Users ──
 function UsersTab() {
   const [data, setData] = useState<any[]>([]);
+  const [schoolsList, setSchoolsList] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [editUser, setEditUser] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
-  const load = () => api.get('/superadmin/users').then(r => setData(r.data)).catch(() => {});
+  const load = async () => {
+    await Promise.all([
+      api.get('/superadmin/users').then(r => setData(r.data)).catch(() => {}),
+      api.get('/superadmin/schools/detail').then(r => setSchoolsList(r.data)).catch(() => {}),
+    ]);
+  };
   useEffect(() => { load(); }, []);
 
   const updateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editUser) return;
     try {
-      await api.put(`/superadmin/users/${editUser.id}`, editUser);
-      toastSuccess('User updated');
-      setEditUser(null);
-      load();
+      await api.put(`/superadmin/users/${editUser.id}`, { name: editUser.name, email: editUser.email, role: editUser.role, schoolId: editUser.school_id || null });
+      toastSuccess('User updated'); setEditUser(null); load();
     } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const deleteUser = async () => {
     if (!deleteTarget) return;
-    try {
-      await api.delete(`/superadmin/users/${deleteTarget.id}`);
-      toastSuccess('User deleted');
-      setDeleteTarget(null);
-      load();
-    } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
+    try { await api.delete(`/superadmin/users/${deleteTarget.id}`); toastSuccess('User deleted'); setDeleteTarget(null); load(); }
+    catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const users = Array.isArray(data) ? data : [];
@@ -383,9 +360,7 @@ function UsersTab() {
                 <tr key={u.id} className="border-b border-neutral-100">
                   <td className="py-3 font-medium">{u.name}</td>
                   <td className="py-3 text-neutral-500">{u.email}</td>
-                  <td className="py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleColors[u.role] || 'bg-neutral-50 text-neutral-700'}`}>{u.role}</span>
-                  </td>
+                  <td className="py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${roleColors[u.role] || 'bg-neutral-50 text-neutral-700'}`}>{u.role}</span></td>
                   <td className="py-3 text-neutral-500">{u.schoolName || '—'}</td>
                   <td className="py-3 text-neutral-400 text-xs">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                   <td className="py-3">
@@ -404,14 +379,17 @@ function UsersTab() {
 
       <Modal open={!!editUser} onClose={() => setEditUser(null)} title="Edit User">
         <form onSubmit={updateUser} className="space-y-3">
-          <input label="Name" value={editUser?.name || ''} onChange={e => setEditUser((p: any) => ({ ...p, name: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input label="Email" value={editUser?.email || ''} onChange={e => setEditUser((p: any) => ({ ...p, email: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <select value={editUser?.role || ''} onChange={e => setEditUser((p: any) => ({ ...p, role: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl">
+          <Input label="Name" value={editUser?.name || ''} onChange={e => setEditUser((p: any) => ({ ...p, name: e.target.value }))} required />
+          <Input label="Email" value={editUser?.email || ''} onChange={e => setEditUser((p: any) => ({ ...p, email: e.target.value }))} />
+          <Select label="Role" value={editUser?.role || ''} onChange={e => setEditUser((p: any) => ({ ...p, role: e.target.value }))}>
             <option value="">Select role</option>
             <option value="superadmin">Super Admin</option><option value="admin">Admin</option>
             <option value="teacher">Teacher</option><option value="student">Student</option><option value="parent">Parent</option>
-          </select>
-          <input label="School ID" type="number" value={editUser?.school_id || ''} onChange={e => setEditUser((p: any) => ({ ...p, school_id: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
+          </Select>
+          <Select label="School" value={editUser?.school_id || ''} onChange={e => setEditUser((p: any) => ({ ...p, school_id: e.target.value }))}>
+            <option value="">None (System-wide)</option>
+            {schoolsList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setEditUser(null)} className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium">Cancel</button>
             <button type="submit" className="flex items-center justify-center gap-1.5 flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium"><Save className="w-4 h-4" /> Save</button>
@@ -419,41 +397,47 @@ function UsersTab() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!deleteTarget} title="Delete User" message={`Permanently delete "${deleteTarget?.name}"? This also removes their Supabase auth account.`}
-        onConfirm={deleteUser} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={!!deleteTarget} title="Delete User" message={`Permanently delete "${deleteTarget?.name}"? This also removes their Supabase auth account.`} onConfirm={deleteUser} onCancel={() => setDeleteTarget(null)} />
     </>
   );
 }
 
+// ── Teachers ──
 function TeachersTab() {
   const [data, setData] = useState<any[]>([]);
+  const [schoolsList, setSchoolsList] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
   const [editTeacher, setEditTeacher] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
-  const load = () => api.get('/superadmin/teachers').then(r => setData(r.data)).catch(() => {});
+  const load = async () => {
+    await Promise.all([
+      api.get('/superadmin/teachers').then(r => setData(r.data)).catch(() => {}),
+      api.get('/superadmin/schools/detail').then(r => setSchoolsList(r.data)).catch(() => {}),
+    ]);
+  };
   useEffect(() => { load(); }, []);
 
   const updateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTeacher) return;
     try {
-      await api.put(`/superadmin/teachers/${editTeacher.id}`, editTeacher);
-      toastSuccess('Teacher updated');
-      setEditTeacher(null);
-      load();
+      await api.put(`/superadmin/teachers/${editTeacher.id}`, {
+        employeeId: editTeacher.employee_id,
+        specialization: editTeacher.specialization,
+        phone: editTeacher.phone,
+        status: editTeacher.status || editTeacher.teacherStatus,
+        schoolId: editTeacher.school_id || null,
+      });
+      toastSuccess('Teacher updated'); setEditTeacher(null); load();
     } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const deleteTeacher = async () => {
     if (!deleteTarget) return;
-    try {
-      await api.delete(`/superadmin/teachers/${deleteTarget.id}`);
-      toastSuccess('Teacher deleted');
-      setDeleteTarget(null);
-      load();
-    } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
+    try { await api.delete(`/superadmin/teachers/${deleteTarget.id}`); toastSuccess('Teacher deleted'); setDeleteTarget(null); load(); }
+    catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const teachers = Array.isArray(data) ? data : [];
@@ -476,10 +460,7 @@ function TeachersTab() {
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-neutral-50">
                 <div className="flex items-center gap-3">
                   <UserCheck className="w-5 h-5 text-neutral-400" />
-                  <div>
-                    <span className="font-medium">{t.name}</span>
-                    {t.employee_id && <span className="ml-2 text-xs text-neutral-400">ID: {t.employee_id}</span>}
-                  </div>
+                  <div><span className="font-medium">{t.name}</span>{t.employee_id && <span className="ml-2 text-xs text-neutral-400">ID: {t.employee_id}</span>}</div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-neutral-500">
                   <span className="text-neutral-400">{t.schoolName}</span>
@@ -517,12 +498,8 @@ function TeachersTab() {
                     </div>
                   )}
                   <div className="flex gap-2 pt-2 border-t border-neutral-100">
-                    <button onClick={() => setEditTeacher({ ...t })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
-                      <Pencil className="w-3.5 h-3.5" /> Edit
-                    </button>
-                    <button onClick={() => setDeleteTarget(t)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium">
-                      <Trash2 className="w-3.5 h-3.5" /> Delete
-                    </button>
+                    <button onClick={() => setEditTeacher({ ...t })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"><Pencil className="w-3.5 h-3.5" /> Edit</button>
+                    <button onClick={() => setDeleteTarget(t)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                   </div>
                 </div>
               )}
@@ -534,13 +511,16 @@ function TeachersTab() {
 
       <Modal open={!!editTeacher} onClose={() => setEditTeacher(null)} title="Edit Teacher">
         <form onSubmit={updateTeacher} className="space-y-3">
-          <input label="Employee ID" value={editTeacher?.employee_id || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, employee_id: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input label="Specialization" value={editTeacher?.specialization || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, specialization: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input label="Phone" value={editTeacher?.phone || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, phone: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <select value={editTeacher?.teacherStatus || 'Active'} onChange={e => setEditTeacher((p: any) => ({ ...p, status: e.target.value, teacherStatus: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl">
+          <Input label="Employee ID" value={editTeacher?.employee_id || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, employee_id: e.target.value }))} />
+          <Input label="Specialization" value={editTeacher?.specialization || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, specialization: e.target.value }))} />
+          <Input label="Phone" value={editTeacher?.phone || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, phone: e.target.value }))} />
+          <Select label="Status" value={editTeacher?.status || editTeacher?.teacherStatus || 'Active'} onChange={e => setEditTeacher((p: any) => ({ ...p, status: e.target.value, teacherStatus: e.target.value }))}>
             <option value="Active">Active</option><option value="Inactive">Inactive</option>
-          </select>
-          <input label="School ID" type="number" value={editTeacher?.school_id || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, school_id: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
+          </Select>
+          <Select label="School" value={editTeacher?.school_id || ''} onChange={e => setEditTeacher((p: any) => ({ ...p, school_id: e.target.value }))}>
+            <option value="">None</option>
+            {schoolsList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setEditTeacher(null)} className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium">Cancel</button>
             <button type="submit" className="flex items-center justify-center gap-1.5 flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium"><Save className="w-4 h-4" /> Save</button>
@@ -548,41 +528,56 @@ function TeachersTab() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!deleteTarget} title="Delete Teacher" message={`Permanently delete teacher record for "${deleteTarget?.name}"?`}
-        onConfirm={deleteTeacher} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={!!deleteTarget} title="Delete Teacher" message={`Permanently delete teacher record for "${deleteTarget?.name}"?`} onConfirm={deleteTeacher} onCancel={() => setDeleteTarget(null)} />
     </>
   );
 }
 
+// ── Students ──
 function StudentsTab() {
   const [data, setData] = useState<any[]>([]);
+  const [schoolsList, setSchoolsList] = useState<any[]>([]);
+  const [classesList, setClassesList] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
   const [editStudent, setEditStudent] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
-  const load = () => api.get('/superadmin/students').then(r => setData(r.data)).catch(() => {});
+  const load = async () => {
+    await Promise.all([
+      api.get('/superadmin/students').then(r => setData(r.data)).catch(() => {}),
+      api.get('/superadmin/schools/detail').then(r => setSchoolsList(r.data)).catch(() => {}),
+      api.get('/superadmin/classes').then(r => setClassesList(r.data)).catch(() => {}),
+    ]);
+  };
   useEffect(() => { load(); }, []);
 
   const updateStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editStudent) return;
     try {
-      await api.put(`/superadmin/students/${editStudent.id}`, editStudent);
-      toastSuccess('Student updated');
-      setEditStudent(null);
-      load();
+      const body: any = {
+        classId: editStudent.class_id,
+        studentId: editStudent.student_id,
+        gender: editStudent.gender,
+        status: editStudent.status || editStudent.studentStatus,
+        schoolId: editStudent.school_id || null,
+      };
+      if (editStudent.guardianName) {
+        body.guardianName = editStudent.guardianName;
+        body.guardianPhone = editStudent.guardianPhone;
+        body.guardianEmail = editStudent.guardianEmail;
+        body.guardianRelationship = editStudent.guardianRelationship;
+      }
+      await api.put(`/superadmin/students/${editStudent.id}`, body);
+      toastSuccess('Student updated'); setEditStudent(null); load();
     } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const deleteStudent = async () => {
     if (!deleteTarget) return;
-    try {
-      await api.delete(`/superadmin/students/${deleteTarget.id}`);
-      toastSuccess('Student deleted');
-      setDeleteTarget(null);
-      load();
-    } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
+    try { await api.delete(`/superadmin/students/${deleteTarget.id}`); toastSuccess('Student deleted'); setDeleteTarget(null); load(); }
+    catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const students = Array.isArray(data) ? data : [];
@@ -605,10 +600,7 @@ function StudentsTab() {
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-neutral-50">
                 <div className="flex items-center gap-3">
                   <GraduationCap className="w-5 h-5 text-neutral-400" />
-                  <div>
-                    <span className="font-medium">{st.name}</span>
-                    {st.student_id && <span className="ml-2 text-xs text-neutral-400">#{st.student_id}</span>}
-                  </div>
+                  <div><span className="font-medium">{st.name}</span>{st.student_id && <span className="ml-2 text-xs text-neutral-400">#{st.student_id}</span>}</div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-neutral-500">
                   <span>{st.className || '—'}</span>
@@ -636,12 +628,8 @@ function StudentsTab() {
                     </div>
                   )}
                   <div className="flex gap-2 pt-2 border-t border-neutral-100">
-                    <button onClick={() => setEditStudent({ ...st })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
-                      <Pencil className="w-3.5 h-3.5" /> Edit
-                    </button>
-                    <button onClick={() => setDeleteTarget(st)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium">
-                      <Trash2 className="w-3.5 h-3.5" /> Delete
-                    </button>
+                    <button onClick={() => setEditStudent({ ...st })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"><Pencil className="w-3.5 h-3.5" /> Edit</button>
+                    <button onClick={() => setDeleteTarget(st)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                   </div>
                 </div>
               )}
@@ -653,20 +641,33 @@ function StudentsTab() {
 
       <Modal open={!!editStudent} onClose={() => setEditStudent(null)} title="Edit Student">
         <form onSubmit={updateStudent} className="space-y-3">
-          <input label="Student ID" value={editStudent?.student_id || ''} onChange={e => setEditStudent((p: any) => ({ ...p, student_id: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input label="Class ID" type="number" value={editStudent?.class_id || ''} onChange={e => setEditStudent((p: any) => ({ ...p, class_id: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input label="Gender" value={editStudent?.gender || ''} onChange={e => setEditStudent((p: any) => ({ ...p, gender: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <select value={editStudent?.studentStatus || 'Active'} onChange={e => setEditStudent((p: any) => ({ ...p, status: e.target.value, studentStatus: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl">
+          <Input label="Student ID (unique identifier)" value={editStudent?.student_id || ''} onChange={e => setEditStudent((p: any) => ({ ...p, student_id: e.target.value }))} />
+          <Select label="School" value={editStudent?.school_id || ''} onChange={e => setEditStudent((p: any) => ({ ...p, school_id: e.target.value }))}>
+            <option value="">Select School</option>
+            {schoolsList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
+          <Select label="Class" value={editStudent?.class_id || ''} onChange={e => setEditStudent((p: any) => ({ ...p, class_id: e.target.value }))}>
+            <option value="">Select Class</option>
+            {classesList.filter((c: any) => !editStudent?.school_id || c.school_id == editStudent.school_id).map((c: any) => (
+              <option key={c.id} value={c.id}>{c.name} ({c.schoolName})</option>
+            ))}
+          </Select>
+          <Select label="Gender" value={editStudent?.gender || ''} onChange={e => setEditStudent((p: any) => ({ ...p, gender: e.target.value }))}>
+            <option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option>
+          </Select>
+          <Select label="Status" value={editStudent?.status || editStudent?.studentStatus || 'Active'} onChange={e => setEditStudent((p: any) => ({ ...p, status: e.target.value, studentStatus: e.target.value }))}>
             <option value="Active">Active</option><option value="Inactive">Inactive</option><option value="Graduated">Graduated</option>
-          </select>
-          <input label="School ID" type="number" value={editStudent?.school_id || ''} onChange={e => setEditStudent((p: any) => ({ ...p, school_id: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
+          </Select>
           <div className="border-t border-neutral-200 pt-3 mt-3">
             <p className="font-medium text-sm text-neutral-500 mb-2">Guardian Info</p>
             <div className="space-y-3">
-              <input label="Guardian Name" value={editStudent?.guardian?.name || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianName: e.target.value, guardian: { ...(p.guardian || {}), name: e.target.value } }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-              <input label="Guardian Phone" value={editStudent?.guardian?.phone || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianPhone: e.target.value, guardian: { ...(p.guardian || {}), phone: e.target.value } }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-              <input label="Guardian Email" value={editStudent?.guardian?.email || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianEmail: e.target.value, guardian: { ...(p.guardian || {}), email: e.target.value } }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-              <input label="Relationship" value={editStudent?.guardian?.relationship || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianRelationship: e.target.value, guardian: { ...(p.guardian || {}), relationship: e.target.value } }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
+              <Input label="Guardian Name" value={editStudent?.guardian?.name || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianName: e.target.value }))} />
+              <Input label="Guardian Phone" value={editStudent?.guardian?.phone || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianPhone: e.target.value }))} />
+              <Input label="Guardian Email" value={editStudent?.guardian?.email || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianEmail: e.target.value }))} />
+              <Select label="Relationship" value={editStudent?.guardian?.relationship || ''} onChange={e => setEditStudent((p: any) => ({ ...p, guardianRelationship: e.target.value }))}>
+                <option value="">Select</option><option value="Father">Father</option><option value="Mother">Mother</option>
+                <option value="Guardian">Guardian</option><option value="Sibling">Sibling</option><option value="Other">Other</option>
+              </Select>
             </div>
           </div>
           <div className="flex gap-2 pt-2">
@@ -676,14 +677,16 @@ function StudentsTab() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!deleteTarget} title="Delete Student" message={`Permanently delete student record for "${deleteTarget?.name}"?`}
-        onConfirm={deleteStudent} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={!!deleteTarget} title="Delete Student" message={`Permanently delete student record for "${deleteTarget?.name}"?`} onConfirm={deleteStudent} onCancel={() => setDeleteTarget(null)} />
     </>
   );
 }
 
+// ── Classes ──
 function ClassesTab() {
   const [data, setData] = useState<any[]>([]);
+  const [schoolsList, setSchoolsList] = useState<any[]>([]);
+  const [teachersList, setTeachersList] = useState<any[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [search, setSearch] = useState('');
   const [editClass, setEditClass] = useState<any>(null);
@@ -691,39 +694,43 @@ function ClassesTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', schoolId: '', teacherId: '', academicYear: new Date().getFullYear().toString() });
 
-  const load = () => api.get('/superadmin/classes').then(r => setData(r.data)).catch(() => {});
+  const load = async () => {
+    await Promise.all([
+      api.get('/superadmin/classes').then(r => setData(r.data)).catch(() => {}),
+      api.get('/superadmin/schools/detail').then(r => setSchoolsList(r.data)).catch(() => {}),
+      api.get('/superadmin/teachers').then(r => setTeachersList(r.data)).catch(() => {}),
+    ]);
+  };
   useEffect(() => { load(); }, []);
 
   const createClass = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await api.post('/superadmin/classes', addForm);
-      toastSuccess('Class created');
-      setShowAddModal(false);
+      toastSuccess('Class created'); setShowAddModal(false);
       setAddForm({ name: '', schoolId: '', teacherId: '', academicYear: new Date().getFullYear().toString() });
       load();
     } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const updateClass = async (e: React.FormEvent) => {
-    if (!editClass) return;
     e.preventDefault();
+    if (!editClass) return;
     try {
-      await api.put(`/superadmin/classes/${editClass.id}`, editClass);
-      toastSuccess('Class updated');
-      setEditClass(null);
-      load();
+      await api.put(`/superadmin/classes/${editClass.id}`, {
+        name: editClass.name,
+        schoolId: editClass.schoolId,
+        teacherId: editClass.teacherId || null,
+        academicYear: editClass.academic_year,
+      });
+      toastSuccess('Class updated'); setEditClass(null); load();
     } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const deleteClass = async () => {
     if (!deleteTarget) return;
-    try {
-      await api.delete(`/superadmin/classes/${deleteTarget.id}`);
-      toastSuccess('Class deleted');
-      setDeleteTarget(null);
-      load();
-    } catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
+    try { await api.delete(`/superadmin/classes/${deleteTarget.id}`); toastSuccess('Class deleted'); setDeleteTarget(null); load(); }
+    catch (err: any) { toastError(err.response?.data?.error || 'Failed'); }
   };
 
   const classesList = Array.isArray(data) ? data : [];
@@ -734,9 +741,7 @@ function ClassesTab() {
       <div className="bg-white p-6 rounded-2xl border border-neutral-200">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">All Classes</h2>
-          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 bg-black text-white px-4 py-2 rounded-xl text-sm font-medium">
-            <Plus className="w-4 h-4" /> Add Class
-          </button>
+          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 bg-black text-white px-4 py-2 rounded-xl text-sm font-medium"><Plus className="w-4 h-4" /> Add Class</button>
         </div>
         <div className="flex items-center gap-3 mb-4">
           <div className="relative flex-1 max-w-xs">
@@ -752,15 +757,10 @@ function ClassesTab() {
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-neutral-50">
                 <div className="flex items-center gap-3">
                   <BookOpen className="w-5 h-5 text-neutral-400" />
-                  <div>
-                    <span className="font-medium">{c.name}</span>
-                    <span className="ml-2 text-xs text-neutral-400">{c.academic_year}</span>
-                  </div>
+                  <div><span className="font-medium">{c.name}</span><span className="ml-2 text-xs text-neutral-400">{c.academic_year}</span></div>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-neutral-500">
-                  <span>{c.schoolName}</span>
-                  <span>{c.studentCount || 0} students</span>
-                  <span>{c.subjectCount || 0} subjects</span>
+                  <span>{c.schoolName}</span><span>{c.studentCount || 0} students</span><span>{c.subjectCount || 0} subjects</span>
                   {expanded.has(c.id) ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </button>
@@ -781,12 +781,8 @@ function ClassesTab() {
                     </div>
                   )}
                   <div className="flex gap-2 pt-2 border-t border-neutral-100">
-                    <button onClick={() => setEditClass({ ...c, schoolId: c.school_id, teacherId: c.teacher_id })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
-                      <Pencil className="w-3.5 h-3.5" /> Edit
-                    </button>
-                    <button onClick={() => setDeleteTarget(c)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium">
-                      <Trash2 className="w-3.5 h-3.5" /> Delete
-                    </button>
+                    <button onClick={() => setEditClass({ ...c, schoolId: c.school_id, teacherId: c.teacher_id })} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"><Pencil className="w-3.5 h-3.5" /> Edit</button>
+                    <button onClick={() => setDeleteTarget(c)} className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 font-medium"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                   </div>
                 </div>
               )}
@@ -798,10 +794,16 @@ function ClassesTab() {
 
       <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="Add Class">
         <form onSubmit={createClass} className="space-y-3">
-          <input placeholder="Class Name" value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input placeholder="School ID" type="number" value={addForm.schoolId} onChange={e => setAddForm(p => ({ ...p, schoolId: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input placeholder="Teacher ID (optional)" type="number" value={addForm.teacherId} onChange={e => setAddForm(p => ({ ...p, teacherId: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input placeholder="Academic Year" value={addForm.academicYear} onChange={e => setAddForm(p => ({ ...p, academicYear: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
+          <Input placeholder="Class Name" value={addForm.name} onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))} required />
+          <Select label="School" value={addForm.schoolId} onChange={e => setAddForm(p => ({ ...p, schoolId: e.target.value }))} required>
+            <option value="">Select School</option>
+            {schoolsList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
+          <Select label="Head Teacher (optional)" value={addForm.teacherId} onChange={e => setAddForm(p => ({ ...p, teacherId: e.target.value }))}>
+            <option value="">None</option>
+            {teachersList.map((t: any) => <option key={t.id} value={t.id}>{t.name} ({t.schoolName || 'No school'})</option>)}
+          </Select>
+          <Input placeholder="Academic Year (e.g. 2025/2026)" value={addForm.academicYear} onChange={e => setAddForm(p => ({ ...p, academicYear: e.target.value }))} required />
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium">Cancel</button>
             <button type="submit" className="flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium">Create</button>
@@ -811,10 +813,18 @@ function ClassesTab() {
 
       <Modal open={!!editClass} onClose={() => setEditClass(null)} title="Edit Class">
         <form onSubmit={updateClass} className="space-y-3">
-          <input label="Name" value={editClass?.name || ''} onChange={e => setEditClass((p: any) => ({ ...p, name: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input label="School ID" type="number" value={editClass?.schoolId || ''} onChange={e => setEditClass((p: any) => ({ ...p, schoolId: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
-          <input label="Head Teacher ID" type="number" value={editClass?.teacherId || ''} onChange={e => setEditClass((p: any) => ({ ...p, teacherId: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" />
-          <input label="Academic Year" value={editClass?.academic_year || ''} onChange={e => setEditClass((p: any) => ({ ...p, academic_year: e.target.value }))} className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl" required />
+          <Input label="Name" value={editClass?.name || ''} onChange={e => setEditClass((p: any) => ({ ...p, name: e.target.value }))} required />
+          <Select label="School" value={editClass?.schoolId || ''} onChange={e => setEditClass((p: any) => ({ ...p, schoolId: e.target.value }))} required>
+            <option value="">Select School</option>
+            {schoolsList.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
+          <Select label="Head Teacher" value={editClass?.teacherId || ''} onChange={e => setEditClass((p: any) => ({ ...p, teacherId: e.target.value }))}>
+            <option value="">None</option>
+            {teachersList.filter((t: any) => t.school_id == editClass?.schoolId || !editClass?.schoolId).map((t: any) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </Select>
+          <Input label="Academic Year" value={editClass?.academic_year || ''} onChange={e => setEditClass((p: any) => ({ ...p, academic_year: e.target.value }))} required />
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setEditClass(null)} className="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl font-medium">Cancel</button>
             <button type="submit" className="flex items-center justify-center gap-1.5 flex-1 bg-black text-white px-4 py-2.5 rounded-xl font-medium"><Save className="w-4 h-4" /> Save</button>
@@ -822,12 +832,12 @@ function ClassesTab() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!deleteTarget} title="Delete Class" message={`Permanently delete class "${deleteTarget?.name}"?`}
-        onConfirm={deleteClass} onCancel={() => setDeleteTarget(null)} />
+      <ConfirmDialog open={!!deleteTarget} title="Delete Class" message={`Permanently delete class "${deleteTarget?.name}"?`} onConfirm={deleteClass} onCancel={() => setDeleteTarget(null)} />
     </>
   );
 }
 
+// ── Financial ──
 function FinancialTab() {
   const [data, setData] = useState<any[]>([]);
   useEffect(() => { api.get('/superadmin/financial').then(r => setData(r.data)).catch(() => {}); }, []);
@@ -853,7 +863,6 @@ function FinancialTab() {
           <p className="text-2xl font-bold text-orange-600">${totalPayroll.toLocaleString()}</p>
         </div>
       </div>
-
       <div className="bg-white p-6 rounded-2xl border border-neutral-200">
         <h2 className="text-lg font-bold mb-4">Per-School Financial Summary</h2>
         <div className="overflow-x-auto">
@@ -894,6 +903,7 @@ function FinancialTab() {
   );
 }
 
+// ── Attendance ──
 function AttendanceTab() {
   const [data, setData] = useState<any[]>([]);
   useEffect(() => { api.get('/superadmin/attendance').then(r => setData(r.data)).catch(() => {}); }, []);
